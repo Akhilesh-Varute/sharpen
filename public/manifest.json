@@ -1,0 +1,9 @@
+{
+  "name": "Sharpen",
+  "short_name": "Sharpen",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#e9ede9",
+  "theme_color": "#a8611f",
+  "icons": []
+}

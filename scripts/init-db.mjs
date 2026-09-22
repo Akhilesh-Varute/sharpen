@@ -1,0 +1,120 @@
+// One-time (and safe-to-rerun) setup: creates tables if they don't exist,
+// and seeds your existing learning tracks so day one isn't a blank page.
+//
+// Run with: npm run db:init
+// (reads TURSO_DATABASE_URL / TURSO_AUTH_TOKEN from .env.local)
+
+import { createClient } from "@libsql/client";
+import fs from "node:fs";
+import path from "node:path";
+
+function loadEnvLocal() {
+  const p = path.join(process.cwd(), ".env.local");
+  if (!fs.existsSync(p)) return;
+  for (const line of fs.readFileSync(p, "utf8").split("\n")) {
+    const m = line.match(/^([A-Z_]+)=(.*)$/);
+    if (m && !process.env[m[1]]) process.env[m[1]] = m[2];
+  }
+}
+loadEnvLocal();
+
+const db = createClient({
+  url: process.env.TURSO_DATABASE_URL,
+  authToken: process.env.TURSO_AUTH_TOKEN,
+});
+
+const schema = `
+CREATE TABLE IF NOT EXISTS journal_entries (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  entry_date TEXT NOT NULL UNIQUE,
+  log TEXT DEFAULT '',
+  learned TEXT DEFAULT '',
+  reflection TEXT DEFAULT '',
+  mood INTEGER,
+  energy INTEGER,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS todos (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  text TEXT NOT NULL,
+  done INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  completed_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS habits (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  archived INTEGER NOT NULL DEFAULT 0,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS habit_logs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  habit_id INTEGER NOT NULL REFERENCES habits(id),
+  log_date TEXT NOT NULL,
+  done INTEGER NOT NULL DEFAULT 1,
+  UNIQUE(habit_id, log_date)
+);
+
+CREATE TABLE IF NOT EXISTS learning_items (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL,
+  category TEXT DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'active',
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS learning_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  learning_item_id INTEGER REFERENCES learning_items(id),
+  log_date TEXT NOT NULL,
+  note TEXT NOT NULL,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+`;
+
+async function main() {
+  for (const stmt of schema.split(";").map((s) => s.trim()).filter(Boolean)) {
+    await db.execute(stmt);
+  }
+  console.log("Tables ready.");
+
+  const { rows } = await db.execute("SELECT COUNT(*) as c FROM habits");
+  if (rows[0].c === 0) {
+    const defaultHabits = ["Read / study 30 min", "No mindless scroll before bed", "Exercise"];
+    for (let i = 0; i < defaultHabits.length; i++) {
+      await db.execute({
+        sql: "INSERT INTO habits (name, sort_order) VALUES (?, ?)",
+        args: [defaultHabits[i], i],
+      });
+    }
+    console.log("Seeded default habits — edit or delete these anytime in the app.");
+  }
+
+  const { rows: learningRows } = await db.execute("SELECT COUNT(*) as c FROM learning_items");
+  if (learningRows[0].c === 0) {
+    const seed = [
+      ["AWS Developer Associate", "Cloud"],
+      ["LangChain", "AI/LLM"],
+      ["LLM fundamentals", "AI/LLM"],
+      ["Python", "Programming"],
+    ];
+    for (let i = 0; i < seed.length; i++) {
+      await db.execute({
+        sql: "INSERT INTO learning_items (title, category, sort_order) VALUES (?, ?, ?)",
+        args: [seed[i][0], seed[i][1], i],
+      });
+    }
+    console.log("Seeded learning tracks from what's already on your drive — edit freely.");
+  }
+}
+
+main().then(() => process.exit(0)).catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

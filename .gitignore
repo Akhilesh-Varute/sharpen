@@ -1,0 +1,6 @@
+node_modules
+.next
+.env.local
+backups/
+local.db
+dev.log
