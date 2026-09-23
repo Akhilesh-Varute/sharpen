@@ -75,7 +75,10 @@ export default function TodayPage() {
         if (cancelled) return;
         setTodos(todosRes.todos || []);
         setDeferredCount(todosRes.deferredCount || 0);
-        setItems((itemsRes.items || []).filter((i) => i.status !== "done"));
+        // Only "active" tracks belong in the quick-capture dropdown --
+        // paused ones are exactly the tracks you said you're not currently
+        // working on, so they shouldn't keep showing up here every time.
+        setItems((itemsRes.items || []).filter((i) => i.status === "active"));
       } catch (err) {
         if (!cancelled) setStaticError(err.message || "Couldn't load todos and learning tracks.");
       }
