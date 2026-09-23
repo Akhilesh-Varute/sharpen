@@ -5,7 +5,14 @@ export const config = {
   // Run on everything except Next internals/static assets. Login page and
   // its API are handled inside the middleware body (allow-listed), not
   // excluded here, so they still go through this same file.
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|icons|manifest.json).*)"],
+  // "icons" here used to mean an /icons folder that never existed -- the
+  // real files (apple-touch-icon.png, icon-192.png, icon-512.png) sit at
+  // the public root and were falling through to the auth check below,
+  // so a home-screen icon refetch after the session cookie expires would
+  // 302 to /login instead of returning the image. Listed explicitly now.
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|apple-touch-icon.png|icon-192.png|icon-512.png|manifest.json).*)",
+  ],
 };
 
 export async function middleware(req) {

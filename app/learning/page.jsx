@@ -225,14 +225,28 @@ export default function LearningPage() {
             Done
           </h2>
           <div className="flex flex-wrap gap-2">
-            {done.map((item) => (
-              <span
-                key={item.id}
-                className="text-sm text-ink-faint dark:text-dink-faint bg-card dark:bg-dcard border border-line-soft dark:border-dline-soft px-3 py-1.5 rounded-full line-through"
-              >
-                {item.title}
-              </span>
-            ))}
+            {done.map((item) => {
+              const busy = statusBusyId === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setStatus(item.id, "active")}
+                  disabled={busy}
+                  title="Tap to make active again"
+                  className="text-sm text-ink-faint dark:text-dink-faint bg-card dark:bg-dcard border border-line-soft dark:border-dline-soft px-3 py-1.5 rounded-full disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  {busy && pendingStatus === "active" ? (
+                    <Spinner className="w-3 h-3" />
+                  ) : (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3 flex-none">
+                      <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                      <path d="M3 3v5h5" />
+                    </svg>
+                  )}
+                  <span className="line-through">{item.title}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
