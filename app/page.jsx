@@ -38,6 +38,7 @@ export default function TodayPage() {
   const [entry, setEntry] = useState({ log: "", reflection: "", mood: null, energy: null });
   const [saved, setSaved] = useState(true);
   const [todos, setTodos] = useState([]);
+  const [deferredCount, setDeferredCount] = useState(0);
   const [newTodo, setNewTodo] = useState("");
   const [addingTodo, setAddingTodo] = useState(false);
   const [items, setItems] = useState([]);
@@ -60,6 +61,7 @@ export default function TodayPage() {
       ]);
       if (cancelled) return;
       setTodos(todosRes.todos || []);
+      setDeferredCount(todosRes.deferredCount || 0);
       setItems((itemsRes.items || []).filter((i) => i.status !== "done"));
     })();
     return () => {
@@ -129,6 +131,7 @@ export default function TodayPage() {
       setNewTodo("");
       const res = await fetch(`/api/todos?today=${today}`).then((r) => r.json());
       setTodos(res.todos || []);
+      setDeferredCount(res.deferredCount || 0);
     } finally {
       setAddingTodo(false);
     }
@@ -152,6 +155,7 @@ export default function TodayPage() {
     // Optimistically drop it from today's list — it'll come back on its own
     // once that date rolls around (see the `today` filter on GET /api/todos).
     setTodos((t) => t.filter((x) => x.id !== id));
+    setDeferredCount((c) => c + 1);
     await fetch("/api/todos", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -291,12 +295,21 @@ export default function TodayPage() {
         </div>
       </section>
 
-      {/* Todos — only meaningful for today; they're a single running list, not tied to a date */}
+      {/* Todos — a single running list, not tied to a date, except that any
+          todo can be moved to tomorrow (defer_until) so it drops out of
+          today's view and reappears once that day arrives. */}
       {isToday && (
         <section className="bg-card dark:bg-dcard border border-line-soft dark:border-dline-soft rounded-lg2 shadow-card p-4 space-y-3">
-          <h2 className="text-[0.7rem] font-semibold uppercase tracking-[0.08em] text-ink-faint dark:text-dink-faint">
-            Today
-          </h2>
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-[0.7rem] font-semibold uppercase tracking-[0.08em] text-ink-faint dark:text-dink-faint">
+              Today
+            </h2>
+            {deferredCount > 0 && (
+              <span className="text-[0.68rem] font-mono text-ink-faint dark:text-dink-faint">
+                {deferredCount} moved to later
+              </span>
+            )}
+          </div>
           <form onSubmit={addTodo} className="flex gap-2">
             <input
               value={newTodo}

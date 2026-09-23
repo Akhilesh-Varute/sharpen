@@ -25,7 +25,19 @@ export async function GET(req) {
           LIMIT 100
         `
   );
-  return NextResponse.json({ todos: rows });
+
+  // So the list doesn't look like deferred todos just vanished: a small
+  // count of what's waiting for a later day, shown next to the heading.
+  let deferredCount = 0;
+  if (today) {
+    const { rows: countRows } = await db.execute({
+      sql: "SELECT COUNT(*) as c FROM todos WHERE defer_until > ? AND done = 0",
+      args: [today],
+    });
+    deferredCount = countRows[0].c;
+  }
+
+  return NextResponse.json({ todos: rows, deferredCount });
 }
 
 export async function POST(req) {
