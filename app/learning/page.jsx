@@ -91,18 +91,18 @@ export default function LearningPage() {
           onChange={(e) => setTitle(e.target.value)}
           placeholder="What are you learning?"
           disabled={addingItem}
-          className="flex-1 border border-line dark:border-dline bg-paper dark:bg-dpaper rounded-sm2 px-3 py-2 text-sm focus:outline-none focus:ring-[3px] focus:ring-accent/20 dark:focus:ring-daccent/20 disabled:opacity-60"
+          className="flex-1 border border-line dark:border-dline bg-paper dark:bg-dpaper rounded-sm2 px-3 py-3 text-base focus:outline-none focus:ring-[3px] focus:ring-accent/20 dark:focus:ring-daccent/20 disabled:opacity-60"
         />
         <input
           value={category}
           onChange={(e) => setCategory(e.target.value)}
           placeholder="Category"
           disabled={addingItem}
-          className="w-28 border border-line dark:border-dline bg-paper dark:bg-dpaper rounded-sm2 px-3 py-2 text-sm focus:outline-none focus:ring-[3px] focus:ring-accent/20 dark:focus:ring-daccent/20 disabled:opacity-60"
+          className="w-24 border border-line dark:border-dline bg-paper dark:bg-dpaper rounded-sm2 px-2.5 py-3 text-base focus:outline-none focus:ring-[3px] focus:ring-accent/20 dark:focus:ring-daccent/20 disabled:opacity-60"
         />
         <button
           disabled={addingItem || !title.trim()}
-          className="bg-ink dark:bg-dink text-paper dark:text-dpaper rounded-sm2 px-4 font-semibold text-sm disabled:opacity-50 flex items-center gap-1.5 min-w-[64px] justify-center"
+          className="bg-ink dark:bg-dink text-paper dark:text-dpaper rounded-sm2 px-4 font-semibold text-base disabled:opacity-50 flex items-center gap-1.5 min-w-[64px] justify-center"
         >
           {addingItem ? <Spinner className="w-3.5 h-3.5" /> : "Add"}
         </button>
@@ -120,7 +120,7 @@ export default function LearningPage() {
             >
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <span className="font-semibold text-sm">{item.title}</span>
+                  <span className="font-semibold text-base">{item.title}</span>
                   {item.logCount > 0 && (
                     <div className="text-xs font-mono text-ink-faint dark:text-dink-faint mt-0.5">
                       {item.logCount} {item.logCount === 1 ? "entry" : "entries"} · last logged {daysAgo(item.logs[0].log_date)}
@@ -133,12 +133,12 @@ export default function LearningPage() {
                   </span>
                 )}
               </div>
-              <div className="flex gap-4 text-xs font-semibold">
+              <div className="flex gap-5 text-sm font-semibold">
                 {item.status === "active" ? (
                   <button
                     onClick={() => setStatus(item.id, "paused")}
                     disabled={busy}
-                    className="text-ink-faint dark:text-dink-faint hover:text-warn dark:hover:text-warn disabled:opacity-50 flex items-center gap-1"
+                    className="text-ink-faint dark:text-dink-faint active:text-warn dark:active:text-warn disabled:opacity-50 flex items-center gap-1.5 py-2 -my-2"
                   >
                     {busy && <Spinner className="w-3 h-3" />}
                     pause
@@ -147,7 +147,7 @@ export default function LearningPage() {
                   <button
                     onClick={() => setStatus(item.id, "active")}
                     disabled={busy}
-                    className="text-ink-faint dark:text-dink-faint hover:text-accent dark:hover:text-daccent disabled:opacity-50 flex items-center gap-1"
+                    className="text-ink-faint dark:text-dink-faint active:text-accent dark:active:text-daccent disabled:opacity-50 flex items-center gap-1.5 py-2 -my-2"
                   >
                     {busy && <Spinner className="w-3 h-3" />}
                     resume
@@ -156,7 +156,7 @@ export default function LearningPage() {
                 <button
                   onClick={() => setStatus(item.id, "done")}
                   disabled={busy}
-                  className="text-ink-faint dark:text-dink-faint hover:text-good dark:hover:text-dgood disabled:opacity-50 flex items-center gap-1"
+                  className="text-ink-faint dark:text-dink-faint active:text-good dark:active:text-dgood disabled:opacity-50 flex items-center gap-1.5 py-2 -my-2"
                 >
                   {busy && <Spinner className="w-3 h-3" />}
                   mark done
@@ -165,7 +165,7 @@ export default function LearningPage() {
               {item.logs.length > 0 && (
                 <ul className="space-y-1.5 border-t border-line-soft dark:border-dline-soft pt-3">
                   {(expanded[item.id] ? item.logs : item.logs.slice(0, 5)).map((l) => (
-                    <li key={l.id} className="text-sm text-ink-soft dark:text-dink-soft flex gap-2">
+                    <li key={l.id} className="text-base text-ink-soft dark:text-dink-soft flex gap-2">
                       <span className="flex-none font-mono text-[0.68rem] text-ink-faint dark:text-dink-faint pt-0.5">
                         {l.log_date}
                       </span>
@@ -177,13 +177,13 @@ export default function LearningPage() {
               {item.logs.length > 5 && (
                 <button
                   onClick={() => setExpanded((e) => ({ ...e, [item.id]: !e[item.id] }))}
-                  className="text-xs font-semibold text-ink-faint dark:text-dink-faint hover:text-accent dark:hover:text-daccent"
+                  className="text-sm font-semibold text-ink-faint dark:text-dink-faint active:text-accent dark:active:text-daccent py-2 -my-2"
                 >
                   {expanded[item.id] ? "show less" : `show all ${item.logCount}`}
                 </button>
               )}
               {item.logs.length === 0 && (
-                <p className="text-sm text-ink-faint dark:text-dink-faint">
+                <p className="text-base text-ink-faint dark:text-dink-faint">
                   Nothing logged yet — log entries against this from the Today page.
                 </p>
               )}
@@ -191,7 +191,7 @@ export default function LearningPage() {
           );
         })}
         {active.length === 0 && (
-          <p className="text-ink-faint dark:text-dink-faint text-sm">Nothing active — add what you're working on above.</p>
+          <p className="text-ink-faint dark:text-dink-faint text-base">Nothing active — add what you're working on above.</p>
         )}
       </div>
 

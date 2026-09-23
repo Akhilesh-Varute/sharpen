@@ -6,6 +6,7 @@
 
 html {
   color-scheme: light dark;
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {
@@ -16,6 +17,7 @@ body {
   background-attachment: fixed;
   color: #1c2420;
   font-family: 'Public Sans', ui-sans-serif, system-ui, sans-serif;
+  overscroll-behavior-y: none;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -37,9 +39,26 @@ h1, h2, h3 {
   font-variant-numeric: tabular-nums;
 }
 
+/* 16px minimum on every form control — anything smaller makes iOS Safari
+   zoom in on focus, which is the single biggest thing that makes a web
+   form feel like a website instead of an app. */
 textarea, input, select {
   background: transparent;
   font-family: 'Public Sans', ui-sans-serif, system-ui, sans-serif;
+  font-size: 16px;
+}
+
+/* Buttons and links: instant tap feedback, no grey flash, no accidental
+   text selection on long-press, no double-tap-to-zoom delay. */
+button, a, [role="button"] {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+button:active, a:active {
+  opacity: 0.7;
 }
 
 .mark-glyph {

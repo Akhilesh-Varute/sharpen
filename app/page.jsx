@@ -186,7 +186,7 @@ export default function TodayPage() {
           <button
             aria-label="Previous day"
             onClick={() => setViewDate((d) => shiftDate(d, -1))}
-            className="w-9 h-9 rounded-full border border-line dark:border-dline bg-card dark:bg-dcard shadow-card flex items-center justify-center text-ink-soft dark:text-dink-soft"
+            className="w-11 h-11 rounded-full border border-line dark:border-dline bg-card dark:bg-dcard shadow-card flex items-center justify-center text-ink-soft dark:text-dink-soft"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
               <path d="m15 18-6-6 6-6" />
@@ -196,7 +196,7 @@ export default function TodayPage() {
             aria-label="Next day"
             onClick={() => setViewDate((d) => (d < today ? shiftDate(d, 1) : d))}
             disabled={isToday}
-            className="w-9 h-9 rounded-full border border-line dark:border-dline bg-card dark:bg-dcard shadow-card flex items-center justify-center text-ink-soft dark:text-dink-soft disabled:opacity-30"
+            className="w-11 h-11 rounded-full border border-line dark:border-dline bg-card dark:bg-dcard shadow-card flex items-center justify-center text-ink-soft dark:text-dink-soft disabled:opacity-30"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
               <path d="m9 18 6-6-6-6" />
@@ -208,7 +208,7 @@ export default function TodayPage() {
       {!isToday && (
         <button
           onClick={() => setViewDate(today)}
-          className="text-xs font-semibold text-accent dark:text-daccent flex items-center gap-1 -mt-4"
+          className="text-sm font-semibold text-accent dark:text-daccent flex items-center gap-1.5 -mt-2 py-1"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
             <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
@@ -224,13 +224,13 @@ export default function TodayPage() {
           Check-in
         </h2>
         <div className="flex items-center gap-3">
-          <span className="text-xs font-semibold text-ink-soft dark:text-dink-soft w-14 flex-none">Mood</span>
+          <span className="text-sm font-semibold text-ink-soft dark:text-dink-soft w-14 flex-none">Mood</span>
           <div className="flex flex-1 justify-between gap-1">
             {MOODS.map((emoji, i) => (
               <button
                 key={i}
                 onClick={() => saveEntry({ mood: i + 1 })}
-                className={`flex-1 max-w-[42px] aspect-square rounded-[12px] text-lg flex items-center justify-center border transition ${
+                className={`flex-1 max-w-[48px] aspect-square rounded-[14px] text-xl flex items-center justify-center border transition ${
                   entry.mood === i + 1
                     ? "bg-accent-soft dark:bg-daccent-soft border-accent dark:border-daccent -translate-y-0.5"
                     : "bg-paper dark:bg-dpaper border-transparent"
@@ -242,13 +242,13 @@ export default function TodayPage() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-xs font-semibold text-ink-soft dark:text-dink-soft w-14 flex-none">Energy</span>
+          <span className="text-sm font-semibold text-ink-soft dark:text-dink-soft w-14 flex-none">Energy</span>
           <div className="flex flex-1 justify-between gap-1">
             {[1, 2, 3, 4, 5].map((n) => (
               <button
                 key={n}
                 onClick={() => saveEntry({ energy: n })}
-                className={`flex-1 max-w-[42px] h-[30px] rounded-sm2 text-xs font-mono border ${
+                className={`flex-1 max-w-[48px] h-10 rounded-sm2 text-sm font-mono border ${
                   entry.energy === n
                     ? "bg-ink text-paper dark:bg-dink dark:text-dpaper border-ink dark:border-dink"
                     : "bg-paper dark:bg-dpaper text-ink-soft dark:text-dink-soft border-line dark:border-dline"
@@ -273,11 +273,11 @@ export default function TodayPage() {
               onChange={(e) => setNewTodo(e.target.value)}
               placeholder="Add a todo…"
               disabled={addingTodo}
-              className="flex-1 border border-line dark:border-dline bg-paper dark:bg-dpaper rounded-sm2 px-3 py-2 text-sm focus:outline-none focus:ring-[3px] focus:ring-accent/20 dark:focus:ring-daccent/20 disabled:opacity-60"
+              className="flex-1 border border-line dark:border-dline bg-paper dark:bg-dpaper rounded-sm2 px-3.5 py-3 text-base focus:outline-none focus:ring-[3px] focus:ring-accent/20 dark:focus:ring-daccent/20 disabled:opacity-60"
             />
             <button
               disabled={addingTodo || !newTodo.trim()}
-              className="bg-ink dark:bg-dink text-paper dark:text-dpaper rounded-sm2 px-4 font-semibold text-sm disabled:opacity-50 flex items-center gap-1.5 min-w-[64px] justify-center"
+              className="bg-ink dark:bg-dink text-paper dark:text-dpaper rounded-sm2 px-5 font-semibold text-base disabled:opacity-50 flex items-center gap-1.5 min-w-[72px] justify-center"
             >
               {addingTodo ? <Spinner className="w-3.5 h-3.5" /> : "Add"}
             </button>
@@ -286,34 +286,37 @@ export default function TodayPage() {
             {todos.map((t) => (
               <li
                 key={t.id}
-                className="flex items-center gap-3 py-2 border-b border-line-soft dark:border-dline-soft last:border-none group"
+                className="flex items-center gap-3 py-3 border-b border-line-soft dark:border-dline-soft last:border-none group"
               >
                 <button
                   onClick={() => toggleTodo(t.id, !t.done)}
-                  className={`w-[21px] h-[21px] flex-none rounded-[7px] border flex items-center justify-center transition ${
+                  className={`w-7 h-7 flex-none rounded-[9px] border flex items-center justify-center transition ${
                     t.done
                       ? "bg-good dark:bg-dgood border-good dark:border-dgood text-accent-ink"
                       : "bg-paper dark:bg-dpaper border-line dark:border-dline"
                   }`}
                 >
                   {t.done && (
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
                       <path d="M20 6 9 17l-5-5" />
                     </svg>
                   )}
                 </button>
-                <span className={`flex-1 text-sm ${t.done ? "line-through text-ink-faint dark:text-dink-faint" : ""}`}>
+                <span className={`flex-1 text-base ${t.done ? "line-through text-ink-faint dark:text-dink-faint" : ""}`}>
                   {t.text}
                 </span>
                 <button
                   onClick={() => deleteTodo(t.id)}
-                  className="opacity-0 group-hover:opacity-100 text-ink-faint dark:text-dink-faint hover:text-warn dark:hover:text-warn text-xs font-semibold"
+                  aria-label="Remove todo"
+                  className="flex-none w-9 h-9 -my-1 flex items-center justify-center text-ink-faint dark:text-dink-faint active:text-warn dark:active:text-warn"
                 >
-                  remove
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+                    <path d="M4 7h16M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2m2 0-.8 12.1A2 2 0 0 1 15.2 21H8.8a2 2 0 0 1-2-1.9L6 7" />
+                  </svg>
                 </button>
               </li>
             ))}
-            {todos.length === 0 && <p className="text-ink-faint dark:text-dink-faint text-sm py-1">Nothing yet.</p>}
+            {todos.length === 0 && <p className="text-ink-faint dark:text-dink-faint text-base py-1">Nothing yet.</p>}
           </ul>
         </section>
       )}
@@ -328,7 +331,7 @@ export default function TodayPage() {
             value={learnItemId}
             onChange={(e) => setLearnItemId(e.target.value)}
             disabled={addingLearn}
-            className="border border-line dark:border-dline bg-paper dark:bg-dpaper rounded-sm2 px-2 py-2 text-sm max-w-[110px] disabled:opacity-60"
+            className="border border-line dark:border-dline bg-paper dark:bg-dpaper rounded-sm2 px-2 py-3 text-base max-w-[112px] disabled:opacity-60"
           >
             <option value="">General</option>
             {items.map((i) => (
@@ -342,11 +345,11 @@ export default function TodayPage() {
             onChange={(e) => setLearnNote(e.target.value)}
             placeholder="One thing you learned…"
             disabled={addingLearn}
-            className="flex-1 border border-line dark:border-dline bg-paper dark:bg-dpaper rounded-sm2 px-3 py-2 text-sm focus:outline-none focus:ring-[3px] focus:ring-accent/20 dark:focus:ring-daccent/20 disabled:opacity-60"
+            className="flex-1 border border-line dark:border-dline bg-paper dark:bg-dpaper rounded-sm2 px-3.5 py-3 text-base focus:outline-none focus:ring-[3px] focus:ring-accent/20 dark:focus:ring-daccent/20 disabled:opacity-60"
           />
           <button
             disabled={addingLearn || !learnNote.trim()}
-            className="bg-ink dark:bg-dink text-paper dark:text-dpaper rounded-sm2 px-4 font-semibold text-sm disabled:opacity-50 flex items-center gap-1.5 min-w-[56px] justify-center"
+            className="bg-ink dark:bg-dink text-paper dark:text-dpaper rounded-sm2 px-5 font-semibold text-base disabled:opacity-50 flex items-center gap-1.5 min-w-[64px] justify-center"
           >
             {addingLearn ? <Spinner className="w-3.5 h-3.5" /> : "Log"}
           </button>
@@ -354,7 +357,7 @@ export default function TodayPage() {
         {dayLogs.length > 0 && (
           <div>
             {dayLogs.map((l) => (
-              <div key={l.id} className="flex gap-2 text-sm py-2 border-b border-line-soft dark:border-dline-soft last:border-none">
+              <div key={l.id} className="flex gap-2 text-base py-2.5 border-b border-line-soft dark:border-dline-soft last:border-none">
                 {l.item_title && (
                   <span className="flex-none font-mono text-[0.63rem] text-accent-strong dark:text-daccent-strong bg-accent-soft dark:bg-daccent-soft px-2 py-0.5 rounded-full h-fit">
                     {l.item_title}
@@ -366,7 +369,7 @@ export default function TodayPage() {
           </div>
         )}
         {dayLogs.length === 0 && (
-          <p className="text-ink-faint dark:text-dink-faint text-sm">Nothing logged this day.</p>
+          <p className="text-ink-faint dark:text-dink-faint text-base">Nothing logged this day.</p>
         )}
       </section>
 
@@ -395,7 +398,7 @@ export default function TodayPage() {
             onChange={(e) => setEntry((s) => ({ ...s, log: e.target.value }))}
             onBlur={() => saveEntry({})}
             rows={4}
-            className="w-full border border-line dark:border-dline bg-paper dark:bg-dpaper rounded-sm2 px-3 py-2 text-sm leading-relaxed focus:outline-none focus:ring-[3px] focus:ring-accent/20 dark:focus:ring-daccent/20"
+            className="w-full border border-line dark:border-dline bg-paper dark:bg-dpaper rounded-sm2 px-3.5 py-3 text-base leading-relaxed focus:outline-none focus:ring-[3px] focus:ring-accent/20 dark:focus:ring-daccent/20"
           />
         </div>
 
@@ -408,7 +411,7 @@ export default function TodayPage() {
             onChange={(e) => setEntry((s) => ({ ...s, reflection: e.target.value }))}
             onBlur={() => saveEntry({})}
             rows={3}
-            className="w-full border border-line dark:border-dline bg-paper dark:bg-dpaper rounded-sm2 px-3 py-2 text-sm leading-relaxed focus:outline-none focus:ring-[3px] focus:ring-accent/20 dark:focus:ring-daccent/20"
+            className="w-full border border-line dark:border-dline bg-paper dark:bg-dpaper rounded-sm2 px-3.5 py-3 text-base leading-relaxed focus:outline-none focus:ring-[3px] focus:ring-accent/20 dark:focus:ring-daccent/20"
           />
         </div>
       </section>

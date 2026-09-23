@@ -53,21 +53,21 @@ export default function NavBar() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-10 bg-paper/90 dark:bg-dpaper/90 backdrop-blur border-t border-line dark:border-dline"
+      className="fixed bottom-0 left-0 right-0 z-10 bg-paper/95 dark:bg-dpaper/95 backdrop-blur border-t border-line dark:border-dline"
       style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
-      <div className="max-w-2xl mx-auto px-2 flex items-stretch justify-between h-16">
+      <div className="max-w-2xl mx-auto px-1 flex items-stretch justify-between h-[68px]">
         {links.map((l) => {
           const active = pathname === l.href;
           return (
             <Link
               key={l.href}
               href={l.href}
-              className={`flex-1 flex flex-col items-center justify-center gap-1 text-[0.65rem] font-semibold transition ${
+              className={`flex-1 flex flex-col items-center justify-center gap-1 text-[0.72rem] font-semibold transition ${
                 active ? "text-ink dark:text-dink" : "text-ink-faint dark:text-dink-faint"
               }`}
             >
-              <span className={`w-5 h-5 ${active ? "text-accent dark:text-daccent" : ""}`}>{l.icon}</span>
+              <span className={`w-6 h-6 ${active ? "text-accent dark:text-daccent" : ""}`}>{l.icon}</span>
               {l.label}
             </Link>
           );
@@ -75,12 +75,12 @@ export default function NavBar() {
         <button
           onClick={logout}
           disabled={loggingOut}
-          className="flex-1 flex flex-col items-center justify-center gap-1 text-[0.65rem] font-semibold text-ink-faint dark:text-dink-faint disabled:opacity-60"
+          className="flex-1 flex flex-col items-center justify-center gap-1 text-[0.72rem] font-semibold text-ink-faint dark:text-dink-faint disabled:opacity-60"
         >
           {loggingOut ? (
-            <Spinner className="w-5 h-5" />
+            <Spinner className="w-6 h-6" />
           ) : (
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
               <path d="M16 17l5-5-5-5M21 12H9" />
             </svg>

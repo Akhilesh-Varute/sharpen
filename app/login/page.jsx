@@ -126,7 +126,8 @@ function LoginForm() {
           <button
             type="button"
             onClick={backspace}
-            className="text-ink-soft dark:text-dink-soft text-sm font-semibold disabled:opacity-50"
+            aria-label="Backspace"
+            className="aspect-square rounded-full flex items-center justify-center text-ink-soft dark:text-dink-soft text-lg font-semibold disabled:opacity-50 active:scale-95 transition"
           >
             ⌫
           </button>

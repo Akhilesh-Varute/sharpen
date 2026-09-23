@@ -113,11 +113,11 @@ export default function HabitsPage() {
           onChange={(e) => setNewHabit(e.target.value)}
           placeholder="New habit…"
           disabled={addingHabit}
-          className="flex-1 border border-line dark:border-dline bg-paper dark:bg-dpaper rounded-sm2 px-3 py-2 text-sm focus:outline-none focus:ring-[3px] focus:ring-accent/20 dark:focus:ring-daccent/20 disabled:opacity-60"
+          className="flex-1 border border-line dark:border-dline bg-paper dark:bg-dpaper rounded-sm2 px-3.5 py-3 text-base focus:outline-none focus:ring-[3px] focus:ring-accent/20 dark:focus:ring-daccent/20 disabled:opacity-60"
         />
         <button
           disabled={addingHabit || !newHabit.trim()}
-          className="bg-ink dark:bg-dink text-paper dark:text-dpaper rounded-sm2 px-4 font-semibold text-sm disabled:opacity-50 flex items-center gap-1.5 min-w-[64px] justify-center"
+          className="bg-ink dark:bg-dink text-paper dark:text-dpaper rounded-sm2 px-5 font-semibold text-base disabled:opacity-50 flex items-center gap-1.5 min-w-[72px] justify-center"
         >
           {addingHabit ? <Spinner className="w-3.5 h-3.5" /> : "Add"}
         </button>
@@ -133,28 +133,28 @@ export default function HabitsPage() {
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => toggle(h, today, !h.doneToday)}
-                  className={`w-[30px] h-[30px] rounded-full border flex items-center justify-center transition ${
+                  className={`w-11 h-11 rounded-full border flex items-center justify-center transition ${
                     h.doneToday
                       ? "bg-good dark:bg-dgood border-good dark:border-dgood text-accent-ink"
                       : "bg-paper dark:bg-dpaper border-line dark:border-dline"
                   }`}
                 >
                   {h.doneToday && (
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
                       <path d="M20 6 9 17l-5-5" />
                     </svg>
                   )}
                 </button>
-                <span className="font-semibold text-sm">{h.name}</span>
+                <span className="font-semibold text-base">{h.name}</span>
               </div>
               <div className="flex items-center gap-3">
-                <span className="text-sm font-mono font-tabular text-accent-strong dark:text-daccent-strong">
+                <span className="text-base font-mono font-tabular text-accent-strong dark:text-daccent-strong">
                   {h.streak > 0 ? `🔥 ${h.streak}` : "—"}
                 </span>
                 <button
                   onClick={() => archive(h.id)}
                   disabled={archivingId === h.id}
-                  className="text-xs text-ink-faint dark:text-dink-faint hover:text-warn dark:hover:text-warn font-semibold disabled:opacity-50 flex items-center gap-1"
+                  className="text-xs text-ink-faint dark:text-dink-faint active:text-warn dark:active:text-warn font-semibold disabled:opacity-50 flex items-center gap-1 py-2 px-1 -my-2"
                 >
                   {archivingId === h.id && <Spinner className="w-3 h-3" />}
                   archive
@@ -169,7 +169,7 @@ export default function HabitsPage() {
                     key={d}
                     title={d}
                     onClick={() => toggle(h, d, !done)}
-                    className={`flex-1 h-[22px] rounded-[4px] ${
+                    className={`flex-1 h-7 rounded-[4px] ${
                       done ? "bg-good dark:bg-dgood" : "bg-line-soft dark:bg-dline-soft"
                     }`}
                   />
@@ -179,7 +179,7 @@ export default function HabitsPage() {
           </div>
         ))}
         {habits.length === 0 && (
-          <p className="text-ink-faint dark:text-dink-faint text-sm">No habits yet — add one above.</p>
+          <p className="text-ink-faint dark:text-dink-faint text-base">No habits yet — add one above.</p>
         )}
       </div>
     </div>
