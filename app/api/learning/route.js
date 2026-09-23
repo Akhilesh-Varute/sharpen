@@ -6,18 +6,49 @@ export async function GET() {
   const { rows: items } = await db.execute(
     "SELECT * FROM learning_items ORDER BY (status = 'done') ASC, sort_order ASC, id ASC"
   );
-  const results = [];
-  for (const item of items) {
-    const { rows: logs } = await db.execute({
-      sql: "SELECT * FROM learning_log WHERE learning_item_id = ? ORDER BY log_date DESC, id DESC LIMIT 20",
-      args: [item.id],
-    });
-    const { rows: countRows } = await db.execute({
-      sql: "SELECT COUNT(*) as c FROM learning_log WHERE learning_item_id = ?",
-      args: [item.id],
-    });
-    results.push({ ...item, logs, logCount: countRows[0].c });
+
+  if (items.length === 0) return NextResponse.json({ items: [] });
+
+  // Used to be 1 + 2*N queries (a logs query and a count query per track,
+  // every time this page loaded, every add, and every status change).
+  // Now it's 3 total: items, all logs for those items, and grouped counts.
+  const ids = items.map((i) => i.id);
+  const placeholders = ids.map(() => "?").join(",");
+
+  const { rows: allLogs } = await db.execute({
+    sql: `
+      SELECT * FROM learning_log
+      WHERE learning_item_id IN (${placeholders})
+      ORDER BY log_date DESC, id DESC
+    `,
+    args: ids,
+  });
+
+  const { rows: countRows } = await db.execute({
+    sql: `
+      SELECT learning_item_id, COUNT(*) as c FROM learning_log
+      WHERE learning_item_id IN (${placeholders})
+      GROUP BY learning_item_id
+    `,
+    args: ids,
+  });
+  const counts = new Map(countRows.map((r) => [r.learning_item_id, r.c]));
+
+  const logsByItem = new Map(ids.map((id) => [id, []]));
+  for (const row of allLogs) {
+    const bucket = logsByItem.get(row.learning_item_id);
+    // each item only needs its most recent 20 for this view (see the page's
+    // "show all" expander for the rest) — allLogs is already sorted, so
+    // this just caps what each item keeps.
+    if (bucket && bucket.length < 20) bucket.push(row);
   }
+
+  const results = items.map((item) => ({
+    ...item,
+    logs: logsByItem.get(item.id) || [],
+    logCount: counts.get(item.id) || 0,
+  }));
+
   return NextResponse.json({ items: results });
 }
 

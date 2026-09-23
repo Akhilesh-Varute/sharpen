@@ -48,6 +48,29 @@ export default function TodayPage() {
   const [loading, setLoading] = useState(true);
   const [switching, setSwitching] = useState(false);
 
+  // Todos and learning tracks aren't tied to viewDate at all — they used to
+  // get refetched on every prev/next tap for no reason. Load them once, on
+  // mount, separately from the per-day data below.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const [todosRes, itemsRes] = await Promise.all([
+        fetch("/api/todos").then((r) => r.json()),
+        fetch("/api/learning").then((r) => r.json()),
+      ]);
+      if (cancelled) return;
+      setTodos(todosRes.todos || []);
+      setItems((itemsRes.items || []).filter((i) => i.status !== "done"));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Only the journal entry and that day's learning log actually depend on
+  // viewDate, so this is what prev/next re-fetches — two small, indexed,
+  // date-filtered queries instead of the previous four (two of which pulled
+  // unrelated or oversized data).
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -56,11 +79,9 @@ export default function TodayPage() {
       } else {
         setSwitching(true);
       }
-      const [journalRes, todosRes, itemsRes, logsRes] = await Promise.all([
+      const [journalRes, logsRes] = await Promise.all([
         fetch(`/api/journal?date=${viewDate}`).then((r) => r.json()),
-        fetch("/api/todos").then((r) => r.json()),
-        fetch("/api/learning").then((r) => r.json()),
-        fetch("/api/learning/log?limit=200").then((r) => r.json()),
+        fetch(`/api/learning/log?date=${viewDate}`).then((r) => r.json()),
       ]);
       if (cancelled) return;
       setEntry(
@@ -73,9 +94,7 @@ export default function TodayPage() {
             }
           : { log: "", reflection: "", mood: null, energy: null }
       );
-      setTodos(todosRes.todos || []);
-      setItems((itemsRes.items || []).filter((i) => i.status !== "done"));
-      setDayLogs((logsRes.logs || []).filter((l) => l.log_date === viewDate));
+      setDayLogs(logsRes.logs || []);
       setLoading(false);
       setSwitching(false);
     })();
@@ -144,8 +163,8 @@ export default function TodayPage() {
         }),
       });
       setLearnNote("");
-      const res = await fetch("/api/learning/log?limit=200").then((r) => r.json());
-      setDayLogs((res.logs || []).filter((l) => l.log_date === viewDate));
+      const res = await fetch(`/api/learning/log?date=${viewDate}`).then((r) => r.json());
+      setDayLogs(res.logs || []);
     } finally {
       setAddingLearn(false);
     }

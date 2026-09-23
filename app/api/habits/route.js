@@ -32,20 +32,34 @@ export async function GET(req) {
     "SELECT * FROM habits WHERE archived = 0 ORDER BY sort_order ASC, id ASC"
   );
 
-  const results = [];
-  for (const habit of habits) {
-    const { rows: logs } = await db.execute({
-      sql: "SELECT log_date FROM habit_logs WHERE habit_id = ? AND done = 1 ORDER BY log_date DESC LIMIT 400",
-      args: [habit.id],
-    });
-    const logDates = logs.map((r) => r.log_date);
-    results.push({
+  if (habits.length === 0) return NextResponse.json({ habits: [] });
+
+  // One query for every habit's log dates instead of one query per habit
+  // (this used to be N+1 round-trips to Turso, hit on every page load AND
+  // every single checkbox tap since the page reloads after each toggle).
+  const ids = habits.map((h) => h.id);
+  const placeholders = ids.map(() => "?").join(",");
+  const { rows: allLogs } = await db.execute({
+    sql: `
+      SELECT habit_id, log_date FROM habit_logs
+      WHERE habit_id IN (${placeholders}) AND done = 1
+      ORDER BY log_date DESC
+    `,
+    args: ids,
+  });
+
+  const byHabit = new Map(ids.map((id) => [id, []]));
+  for (const row of allLogs) byHabit.get(row.habit_id)?.push(row.log_date);
+
+  const results = habits.map((habit) => {
+    const logDates = byHabit.get(habit.id) || [];
+    return {
       ...habit,
       doneToday: logDates.includes(today),
       streak: computeStreak(logDates, today),
       last30: logDates.filter((d) => d >= addDays(today, -29)),
-    });
-  }
+    };
+  });
 
   return NextResponse.json({ habits: results });
 }

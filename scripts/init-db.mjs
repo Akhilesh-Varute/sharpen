@@ -76,6 +76,14 @@ CREATE TABLE IF NOT EXISTS learning_log (
   note TEXT NOT NULL,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
+
+-- learning/log's "give me this one day" query filters on log_date alone --
+-- see app/api/learning/log/route.js -- without this it's a full table scan.
+CREATE INDEX IF NOT EXISTS idx_learning_log_date ON learning_log(log_date);
+
+-- /api/learning fetches every track's logs in one query filtered by
+-- learning_item_id IN (...) -- SQLite doesn't auto-index FK columns.
+CREATE INDEX IF NOT EXISTS idx_learning_log_item ON learning_log(learning_item_id);
 `;
 
 async function main() {
