@@ -182,7 +182,7 @@ export default function HabitsPage() {
                 <button
                   onClick={() => archive(h.id)}
                   disabled={archivingId === h.id}
-                  className="text-xs text-ink-faint dark:text-dink-faint active:text-warn dark:active:text-warn font-semibold disabled:opacity-50 flex items-center gap-1 py-2 px-1 -my-2"
+                  className="text-xs font-semibold bg-warn-soft dark:bg-dwarn-soft text-warn dark:text-dwarn rounded-full px-3 py-1.5 disabled:opacity-50 flex items-center gap-1.5"
                 >
                   {archivingId === h.id && <Spinner className="w-3 h-3" />}
                   archive

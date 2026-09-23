@@ -21,6 +21,7 @@ export default function LearningPage() {
   const [category, setCategory] = useState("");
   const [addingItem, setAddingItem] = useState(false);
   const [statusBusyId, setStatusBusyId] = useState(null);
+  const [pendingStatus, setPendingStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState({});
   const [loadError, setLoadError] = useState(null);
@@ -65,6 +66,7 @@ export default function LearningPage() {
 
   async function setStatus(id, status) {
     setStatusBusyId(id);
+    setPendingStatus(status);
     try {
       await fetchJson("/api/learning", {
         method: "PATCH",
@@ -77,6 +79,7 @@ export default function LearningPage() {
       setActionError(err.message || "Couldn't update that track.");
     } finally {
       setStatusBusyId(null);
+      setPendingStatus(null);
     }
   }
 
@@ -154,32 +157,32 @@ export default function LearningPage() {
                   </span>
                 )}
               </div>
-              <div className="flex gap-5 text-sm font-semibold">
+              <div className="flex gap-2 text-xs font-semibold">
                 {item.status === "active" ? (
                   <button
                     onClick={() => setStatus(item.id, "paused")}
                     disabled={busy}
-                    className="text-ink-faint dark:text-dink-faint active:text-warn dark:active:text-warn disabled:opacity-50 flex items-center gap-1.5 py-2 -my-2"
+                    className="bg-warn-soft dark:bg-dwarn-soft text-warn dark:text-dwarn rounded-full px-3 py-1.5 disabled:opacity-50 flex items-center gap-1.5"
                   >
-                    {busy && <Spinner className="w-3 h-3" />}
+                    {busy && pendingStatus === "paused" && <Spinner className="w-3 h-3" />}
                     pause
                   </button>
                 ) : (
                   <button
                     onClick={() => setStatus(item.id, "active")}
                     disabled={busy}
-                    className="text-ink-faint dark:text-dink-faint active:text-accent dark:active:text-daccent disabled:opacity-50 flex items-center gap-1.5 py-2 -my-2"
+                    className="bg-accent-soft dark:bg-daccent-soft text-accent dark:text-daccent rounded-full px-3 py-1.5 disabled:opacity-50 flex items-center gap-1.5"
                   >
-                    {busy && <Spinner className="w-3 h-3" />}
+                    {busy && pendingStatus === "active" && <Spinner className="w-3 h-3" />}
                     resume
                   </button>
                 )}
                 <button
                   onClick={() => setStatus(item.id, "done")}
                   disabled={busy}
-                  className="text-ink-faint dark:text-dink-faint active:text-good dark:active:text-dgood disabled:opacity-50 flex items-center gap-1.5 py-2 -my-2"
+                  className="bg-good-soft dark:bg-dgood-soft text-good dark:text-dgood rounded-full px-3 py-1.5 disabled:opacity-50 flex items-center gap-1.5"
                 >
-                  {busy && <Spinner className="w-3 h-3" />}
+                  {busy && pendingStatus === "done" && <Spinner className="w-3 h-3" />}
                   mark done
                 </button>
               </div>

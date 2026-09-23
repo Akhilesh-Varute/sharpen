@@ -23,6 +23,7 @@ export default {
         good: "#3c7657",
         "good-soft": "#dfe9e0",
         warn: "#a8432b",
+        "warn-soft": "#f3ded7",
         // dark mode variants, referenced via dark: utilities
         dink: "#eef1ec",
         "dink-soft": "#a8b2a9",
@@ -36,6 +37,9 @@ export default {
         "daccent-strong": "#e8ac6c",
         "daccent-soft": "#3a2c18",
         dgood: "#6bb28c",
+        "dgood-soft": "#1c2e22",
+        dwarn: "#e2836a",
+        "dwarn-soft": "#3a1f1a",
       },
       fontFamily: {
         display: ["Fraunces", "Georgia", "serif"],

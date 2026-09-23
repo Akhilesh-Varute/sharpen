@@ -433,7 +433,7 @@ export default function TodayPage() {
                     onClick={() => deferTodoToTomorrow(t.id)}
                     aria-label="Move to tomorrow"
                     title="Move to tomorrow"
-                    className="flex-none w-9 h-9 -my-1 flex items-center justify-center text-ink-faint dark:text-dink-faint active:text-accent dark:active:text-daccent"
+                    className="flex-none w-8 h-8 rounded-full bg-accent-soft dark:bg-daccent-soft text-accent dark:text-daccent flex items-center justify-center"
                   >
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
                       <path d="M5 12h14M13 6l6 6-6 6" />
@@ -443,7 +443,7 @@ export default function TodayPage() {
                 <button
                   onClick={() => deleteTodo(t.id)}
                   aria-label="Remove todo"
-                  className="flex-none w-9 h-9 -my-1 flex items-center justify-center text-ink-faint dark:text-dink-faint active:text-warn dark:active:text-warn"
+                  className="flex-none w-8 h-8 rounded-full bg-warn-soft dark:bg-dwarn-soft text-warn dark:text-dwarn flex items-center justify-center"
                 >
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
                     <path d="M4 7h16M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2m2 0-.8 12.1A2 2 0 0 1 15.2 21H8.8a2 2 0 0 1-2-1.9L6 7" />
