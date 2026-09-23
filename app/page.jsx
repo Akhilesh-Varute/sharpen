@@ -62,6 +62,7 @@ export default function TodayPage() {
   const [learnItemId, setLearnItemId] = useState("");
   const [addingLearn, setAddingLearn] = useState(false);
   const [dayLogs, setDayLogs] = useState(cachedDay?.dayLogs || []);
+  const [dayCompletedTodos, setDayCompletedTodos] = useState(cachedDay?.completedTodos || []);
   const [loading, setLoading] = useState(!(cachedStatic && cachedDay));
   const [switching, setSwitching] = useState(false);
   const [staticError, setStaticError] = useState(null);
@@ -120,6 +121,7 @@ export default function TodayPage() {
     if (cachedForThisDay) {
       setEntry(cachedForThisDay.entry);
       setDayLogs(cachedForThisDay.dayLogs);
+      setDayCompletedTodos(cachedForThisDay.completedTodos || []);
       setLoading(false);
     } else if (!loading) {
       setSwitching(true);
@@ -128,10 +130,15 @@ export default function TodayPage() {
     (async () => {
       setDayError(null);
       try {
-        const [journalRes, logsRes] = await Promise.all([
+        // Todos aren't tied to a date except for the day they were
+        // completed on -- past days only ever need that read-only list,
+        // never the live editable one (that only makes sense for today).
+        const fetches = [
           fetchJson(`/api/journal?date=${viewDate}`),
           fetchJson(`/api/learning/log?date=${viewDate}`),
-        ]);
+        ];
+        if (viewDate !== today) fetches.push(fetchJson(`/api/todos?date=${viewDate}`));
+        const [journalRes, logsRes, completedRes] = await Promise.all(fetches);
         if (cancelled) return;
         const nextEntry = journalRes.entry
           ? {
@@ -142,9 +149,15 @@ export default function TodayPage() {
             }
           : { log: "", reflection: "", mood: null, energy: null };
         const nextDayLogs = logsRes.logs || [];
+        const nextCompletedTodos = completedRes ? completedRes.completed || [] : [];
         setEntry(nextEntry);
         setDayLogs(nextDayLogs);
-        setCache(dayCacheKey(viewDate), { entry: nextEntry, dayLogs: nextDayLogs });
+        setDayCompletedTodos(nextCompletedTodos);
+        setCache(dayCacheKey(viewDate), {
+          entry: nextEntry,
+          dayLogs: nextDayLogs,
+          completedTodos: nextCompletedTodos,
+        });
       } catch (err) {
         if (!cancelled) setDayError(err.message || "Couldn't load this day.");
       } finally {
@@ -224,7 +237,11 @@ export default function TodayPage() {
       await fetchJson("/api/todos", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, done }),
+        // completed_date is today's date -- this list only shows on the
+        // Today page, so "done" always means "done today". Sending it
+        // explicitly is what lets a past day still show what got finished
+        // on it, instead of the checked-off item just piling up here.
+        body: JSON.stringify({ id, done, completed_date: done ? today : null }),
       });
       setActionError(null);
       setCache(STATIC_CACHE_KEY, { todos: nextTodos, deferred: deferredTodos, items });
@@ -538,6 +555,32 @@ export default function TodayPage() {
                 ))}
               </ul>
             </div>
+          )}
+        </section>
+      )}
+
+      {/* On a past day, todos aren't editable here -- just show what got
+          finished that day, using completed_date recorded at the time. */}
+      {!isToday && (
+        <section className="bg-card dark:bg-dcard border border-line-soft dark:border-dline-soft rounded-lg2 shadow-card p-4 space-y-3">
+          <h2 className="text-[0.7rem] font-semibold uppercase tracking-[0.08em] text-ink-faint dark:text-dink-faint">
+            Completed that day
+          </h2>
+          {dayCompletedTodos.length > 0 ? (
+            <ul className="space-y-2">
+              {dayCompletedTodos.map((t) => (
+                <li key={t.id} className="flex items-center gap-3 text-base text-ink-faint dark:text-dink-faint">
+                  <span className="w-6 h-6 flex-none rounded-[9px] bg-good dark:bg-dgood text-accent-ink flex items-center justify-center">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
+                      <path d="M20 6 9 17l-5-5" />
+                    </svg>
+                  </span>
+                  <span className="line-through">{t.text}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-ink-faint dark:text-dink-faint text-base">Nothing completed this day.</p>
           )}
         </section>
       )}

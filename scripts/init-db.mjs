@@ -42,7 +42,8 @@ CREATE TABLE IF NOT EXISTS todos (
   done INTEGER NOT NULL DEFAULT 0,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP,
   completed_at TEXT,
-  defer_until TEXT
+  defer_until TEXT,
+  completed_date TEXT
 );
 
 CREATE TABLE IF NOT EXISTS habits (
@@ -117,6 +118,7 @@ async function main() {
   console.log("Tables ready.");
 
   await ensureColumn("todos", "defer_until", "defer_until TEXT");
+  await ensureColumn("todos", "completed_date", "completed_date TEXT");
 
   const { rows } = await db.execute("SELECT COUNT(*) as c FROM habits");
   if (rows[0].c === 0) {
