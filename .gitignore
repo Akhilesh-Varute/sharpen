@@ -7,3 +7,6 @@ dev.log
 
 .vercel
 .env*
+
+# Local Claude Code / Cowork session state -- not project config.
+.claude/
