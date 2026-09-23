@@ -3,18 +3,38 @@
 import { useEffect, useState } from "react";
 import Spinner from "../components/Spinner";
 
-function todayStr() {
-  const d = new Date();
+function toDateStr(d) {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
 }
 
+function todayStr() {
+  return toDateStr(new Date());
+}
+
+function shiftDate(dateStr, deltaDays) {
+  const d = new Date(dateStr + "T00:00:00");
+  d.setDate(d.getDate() + deltaDays);
+  return toDateStr(d);
+}
+
+function formatHeading(dateStr, today) {
+  if (dateStr === today) return "Today";
+  const yesterday = shiftDate(today, -1);
+  if (dateStr === yesterday) return "Yesterday";
+  const d = new Date(dateStr + "T00:00:00");
+  return d.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
+}
+
 const MOODS = ["😞", "😕", "😐", "🙂", "😄"];
 
 export default function TodayPage() {
-  const date = todayStr();
+  const today = todayStr();
+  const [viewDate, setViewDate] = useState(today);
+  const isToday = viewDate === today;
+
   const [entry, setEntry] = useState({ log: "", reflection: "", mood: null, energy: null });
   const [saved, setSaved] = useState(true);
   const [todos, setTodos] = useState([]);
@@ -24,31 +44,46 @@ export default function TodayPage() {
   const [learnNote, setLearnNote] = useState("");
   const [learnItemId, setLearnItemId] = useState("");
   const [addingLearn, setAddingLearn] = useState(false);
-  const [todayLogs, setTodayLogs] = useState([]);
+  const [dayLogs, setDayLogs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [switching, setSwitching] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
     (async () => {
+      if (loading) {
+        // first load only
+      } else {
+        setSwitching(true);
+      }
       const [journalRes, todosRes, itemsRes, logsRes] = await Promise.all([
-        fetch(`/api/journal?date=${date}`).then((r) => r.json()),
+        fetch(`/api/journal?date=${viewDate}`).then((r) => r.json()),
         fetch("/api/todos").then((r) => r.json()),
         fetch("/api/learning").then((r) => r.json()),
-        fetch("/api/learning/log?limit=100").then((r) => r.json()),
+        fetch("/api/learning/log?limit=200").then((r) => r.json()),
       ]);
-      if (journalRes.entry) {
-        setEntry({
-          log: journalRes.entry.log || "",
-          reflection: journalRes.entry.reflection || "",
-          mood: journalRes.entry.mood,
-          energy: journalRes.entry.energy,
-        });
-      }
+      if (cancelled) return;
+      setEntry(
+        journalRes.entry
+          ? {
+              log: journalRes.entry.log || "",
+              reflection: journalRes.entry.reflection || "",
+              mood: journalRes.entry.mood,
+              energy: journalRes.entry.energy,
+            }
+          : { log: "", reflection: "", mood: null, energy: null }
+      );
       setTodos(todosRes.todos || []);
       setItems((itemsRes.items || []).filter((i) => i.status !== "done"));
-      setTodayLogs((logsRes.logs || []).filter((l) => l.log_date === date));
+      setDayLogs((logsRes.logs || []).filter((l) => l.log_date === viewDate));
       setLoading(false);
+      setSwitching(false);
     })();
-  }, [date]);
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewDate]);
 
   async function saveEntry(next) {
     const merged = { ...entry, ...next };
@@ -57,7 +92,7 @@ export default function TodayPage() {
     await fetch("/api/journal", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ date, ...merged }),
+      body: JSON.stringify({ date: viewDate, ...merged }),
     });
     setSaved(true);
   }
@@ -104,13 +139,13 @@ export default function TodayPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           learning_item_id: learnItemId || null,
-          date,
+          date: viewDate,
           note: learnNote,
         }),
       });
       setLearnNote("");
-      const res = await fetch("/api/learning/log?limit=100").then((r) => r.json());
-      setTodayLogs((res.logs || []).filter((l) => l.log_date === date));
+      const res = await fetch("/api/learning/log?limit=200").then((r) => r.json());
+      setDayLogs((res.logs || []).filter((l) => l.log_date === viewDate));
     } finally {
       setAddingLearn(false);
     }
@@ -127,14 +162,61 @@ export default function TodayPage() {
 
   return (
     <div className="space-y-6">
-      <header className="pt-1">
-        <div className="text-xs font-mono uppercase tracking-[0.08em] text-accent dark:text-daccent font-semibold">
-          {new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}
+      <header className="pt-1 flex items-center justify-between gap-2">
+        <div>
+          <div className="text-xs font-mono uppercase tracking-[0.08em] text-accent dark:text-daccent font-semibold flex items-center gap-2">
+            {new Date(viewDate + "T00:00:00").toLocaleDateString(undefined, {
+              weekday: "long",
+              day: "numeric",
+              month: "long",
+            })}
+            {switching && <Spinner className="w-3 h-3" />}
+          </div>
+          <h1 className="text-2xl font-display font-medium mt-1">
+            {isToday
+              ? new Date().getHours() < 12
+                ? "Morning."
+                : new Date().getHours() < 18
+                ? "Afternoon."
+                : "Evening."
+              : formatHeading(viewDate, today) + "."}
+          </h1>
         </div>
-        <h1 className="text-2xl font-display font-medium mt-1">
-          {new Date().getHours() < 12 ? "Morning." : new Date().getHours() < 18 ? "Afternoon." : "Evening."}
-        </h1>
+        <div className="flex items-center gap-1 flex-none">
+          <button
+            aria-label="Previous day"
+            onClick={() => setViewDate((d) => shiftDate(d, -1))}
+            className="w-9 h-9 rounded-full border border-line dark:border-dline bg-card dark:bg-dcard shadow-card flex items-center justify-center text-ink-soft dark:text-dink-soft"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+              <path d="m15 18-6-6 6-6" />
+            </svg>
+          </button>
+          <button
+            aria-label="Next day"
+            onClick={() => setViewDate((d) => (d < today ? shiftDate(d, 1) : d))}
+            disabled={isToday}
+            className="w-9 h-9 rounded-full border border-line dark:border-dline bg-card dark:bg-dcard shadow-card flex items-center justify-center text-ink-soft dark:text-dink-soft disabled:opacity-30"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+              <path d="m9 18 6-6-6-6" />
+            </svg>
+          </button>
+        </div>
       </header>
+
+      {!isToday && (
+        <button
+          onClick={() => setViewDate(today)}
+          className="text-xs font-semibold text-accent dark:text-daccent flex items-center gap-1 -mt-4"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
+            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+            <path d="M3 3v5h5" />
+          </svg>
+          Jump back to today
+        </button>
+      )}
 
       {/* Check-in */}
       <section className="bg-card dark:bg-dcard border border-line-soft dark:border-dline-soft rounded-lg2 shadow-card p-4 space-y-3">
@@ -179,65 +261,67 @@ export default function TodayPage() {
         </div>
       </section>
 
-      {/* Todos */}
-      <section className="bg-card dark:bg-dcard border border-line-soft dark:border-dline-soft rounded-lg2 shadow-card p-4 space-y-3">
-        <h2 className="text-[0.7rem] font-semibold uppercase tracking-[0.08em] text-ink-faint dark:text-dink-faint">
-          Today
-        </h2>
-        <form onSubmit={addTodo} className="flex gap-2">
-          <input
-            value={newTodo}
-            onChange={(e) => setNewTodo(e.target.value)}
-            placeholder="Add a todo…"
-            disabled={addingTodo}
-            className="flex-1 border border-line dark:border-dline bg-paper dark:bg-dpaper rounded-sm2 px-3 py-2 text-sm focus:outline-none focus:ring-[3px] focus:ring-accent/20 dark:focus:ring-daccent/20 disabled:opacity-60"
-          />
-          <button
-            disabled={addingTodo || !newTodo.trim()}
-            className="bg-ink dark:bg-dink text-paper dark:text-dpaper rounded-sm2 px-4 font-semibold text-sm disabled:opacity-50 flex items-center gap-1.5 min-w-[64px] justify-center"
-          >
-            {addingTodo ? <Spinner className="w-3.5 h-3.5" /> : "Add"}
-          </button>
-        </form>
-        <ul>
-          {todos.map((t) => (
-            <li
-              key={t.id}
-              className="flex items-center gap-3 py-2 border-b border-line-soft dark:border-dline-soft last:border-none group"
+      {/* Todos — only meaningful for today; they're a single running list, not tied to a date */}
+      {isToday && (
+        <section className="bg-card dark:bg-dcard border border-line-soft dark:border-dline-soft rounded-lg2 shadow-card p-4 space-y-3">
+          <h2 className="text-[0.7rem] font-semibold uppercase tracking-[0.08em] text-ink-faint dark:text-dink-faint">
+            Today
+          </h2>
+          <form onSubmit={addTodo} className="flex gap-2">
+            <input
+              value={newTodo}
+              onChange={(e) => setNewTodo(e.target.value)}
+              placeholder="Add a todo…"
+              disabled={addingTodo}
+              className="flex-1 border border-line dark:border-dline bg-paper dark:bg-dpaper rounded-sm2 px-3 py-2 text-sm focus:outline-none focus:ring-[3px] focus:ring-accent/20 dark:focus:ring-daccent/20 disabled:opacity-60"
+            />
+            <button
+              disabled={addingTodo || !newTodo.trim()}
+              className="bg-ink dark:bg-dink text-paper dark:text-dpaper rounded-sm2 px-4 font-semibold text-sm disabled:opacity-50 flex items-center gap-1.5 min-w-[64px] justify-center"
             >
-              <button
-                onClick={() => toggleTodo(t.id, !t.done)}
-                className={`w-[21px] h-[21px] flex-none rounded-[7px] border flex items-center justify-center transition ${
-                  t.done
-                    ? "bg-good dark:bg-dgood border-good dark:border-dgood text-accent-ink"
-                    : "bg-paper dark:bg-dpaper border-line dark:border-dline"
-                }`}
+              {addingTodo ? <Spinner className="w-3.5 h-3.5" /> : "Add"}
+            </button>
+          </form>
+          <ul>
+            {todos.map((t) => (
+              <li
+                key={t.id}
+                className="flex items-center gap-3 py-2 border-b border-line-soft dark:border-dline-soft last:border-none group"
               >
-                {t.done && (
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3">
-                    <path d="M20 6 9 17l-5-5" />
-                  </svg>
-                )}
-              </button>
-              <span className={`flex-1 text-sm ${t.done ? "line-through text-ink-faint dark:text-dink-faint" : ""}`}>
-                {t.text}
-              </span>
-              <button
-                onClick={() => deleteTodo(t.id)}
-                className="opacity-0 group-hover:opacity-100 text-ink-faint dark:text-dink-faint hover:text-warn dark:hover:text-warn text-xs font-semibold"
-              >
-                remove
-              </button>
-            </li>
-          ))}
-          {todos.length === 0 && <p className="text-ink-faint dark:text-dink-faint text-sm py-1">Nothing yet.</p>}
-        </ul>
-      </section>
+                <button
+                  onClick={() => toggleTodo(t.id, !t.done)}
+                  className={`w-[21px] h-[21px] flex-none rounded-[7px] border flex items-center justify-center transition ${
+                    t.done
+                      ? "bg-good dark:bg-dgood border-good dark:border-dgood text-accent-ink"
+                      : "bg-paper dark:bg-dpaper border-line dark:border-dline"
+                  }`}
+                >
+                  {t.done && (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3">
+                      <path d="M20 6 9 17l-5-5" />
+                    </svg>
+                  )}
+                </button>
+                <span className={`flex-1 text-sm ${t.done ? "line-through text-ink-faint dark:text-dink-faint" : ""}`}>
+                  {t.text}
+                </span>
+                <button
+                  onClick={() => deleteTodo(t.id)}
+                  className="opacity-0 group-hover:opacity-100 text-ink-faint dark:text-dink-faint hover:text-warn dark:hover:text-warn text-xs font-semibold"
+                >
+                  remove
+                </button>
+              </li>
+            ))}
+            {todos.length === 0 && <p className="text-ink-faint dark:text-dink-faint text-sm py-1">Nothing yet.</p>}
+          </ul>
+        </section>
+      )}
 
-      {/* Learned today */}
+      {/* Learned that day */}
       <section className="bg-card dark:bg-dcard border border-line-soft dark:border-dline-soft rounded-lg2 shadow-card p-4 space-y-3">
         <h2 className="text-[0.7rem] font-semibold uppercase tracking-[0.08em] text-ink-faint dark:text-dink-faint">
-          Learned today
+          {isToday ? "Learned today" : "Learned that day"}
         </h2>
         <form onSubmit={addLearning} className="flex gap-2">
           <select
@@ -267,9 +351,9 @@ export default function TodayPage() {
             {addingLearn ? <Spinner className="w-3.5 h-3.5" /> : "Log"}
           </button>
         </form>
-        {todayLogs.length > 0 && (
+        {dayLogs.length > 0 && (
           <div>
-            {todayLogs.map((l) => (
+            {dayLogs.map((l) => (
               <div key={l.id} className="flex gap-2 text-sm py-2 border-b border-line-soft dark:border-dline-soft last:border-none">
                 {l.item_title && (
                   <span className="flex-none font-mono text-[0.63rem] text-accent-strong dark:text-daccent-strong bg-accent-soft dark:bg-daccent-soft px-2 py-0.5 rounded-full h-fit">
@@ -280,6 +364,9 @@ export default function TodayPage() {
               </div>
             ))}
           </div>
+        )}
+        {dayLogs.length === 0 && (
+          <p className="text-ink-faint dark:text-dink-faint text-sm">Nothing logged this day.</p>
         )}
       </section>
 
@@ -314,7 +401,7 @@ export default function TodayPage() {
 
         <div>
           <p className="text-[0.72rem] text-ink-faint dark:text-dink-faint mb-1.5">
-            A few honest lines: how today actually went.
+            A few honest lines: how that day actually went.
           </p>
           <textarea
             value={entry.reflection}
