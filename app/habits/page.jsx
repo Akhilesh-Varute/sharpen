@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Spinner from "../../components/Spinner";
 import ErrorBanner from "../../components/ErrorBanner";
 import { fetchJson } from "../../lib/fetchJson";
+import { getCache, setCache } from "../../lib/pageCache";
 
 function todayStr() {
   const d = new Date();
@@ -24,16 +25,19 @@ function last30Days() {
   return days;
 }
 
+const CACHE_KEY = "habits";
+
 export default function HabitsPage() {
   const today = todayStr();
   const days = last30Days();
-  const [habits, setHabits] = useState([]);
-  const [archivedHabits, setArchivedHabits] = useState([]);
+  const cached = getCache(CACHE_KEY);
+  const [habits, setHabits] = useState(cached?.habits || []);
+  const [archivedHabits, setArchivedHabits] = useState(cached?.archived || []);
   const [newHabit, setNewHabit] = useState("");
   const [addingHabit, setAddingHabit] = useState(false);
   const [archivingId, setArchivingId] = useState(null);
   const [restoringId, setRestoringId] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!cached);
   const [loadError, setLoadError] = useState(null);
   const [actionError, setActionError] = useState(null);
 
@@ -41,8 +45,11 @@ export default function HabitsPage() {
     setLoadError(null);
     try {
       const res = await fetchJson(`/api/habits?today=${today}`);
-      setHabits(res.habits || []);
-      setArchivedHabits(res.archived || []);
+      const nextHabits = res.habits || [];
+      const nextArchived = res.archived || [];
+      setHabits(nextHabits);
+      setArchivedHabits(nextArchived);
+      setCache(CACHE_KEY, { habits: nextHabits, archived: nextArchived });
     } catch (err) {
       setLoadError(err.message || "Couldn't load habits.");
     } finally {

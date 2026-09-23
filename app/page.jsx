@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Spinner from "../components/Spinner";
 import ErrorBanner from "../components/ErrorBanner";
 import { fetchJson } from "../lib/fetchJson";
+import { getCache, setCache } from "../lib/pageCache";
 
 function toDateStr(d) {
   const y = d.getFullYear();
@@ -34,24 +35,34 @@ function formatHeading(dateStr, today) {
 
 const MOODS = ["😞", "😕", "😐", "🙂", "😄"];
 
+const STATIC_CACHE_KEY = "today-static";
+function dayCacheKey(dateStr) {
+  return `today-day:${dateStr}`;
+}
+
 export default function TodayPage() {
   const today = todayStr();
   const [viewDate, setViewDate] = useState(today);
   const isToday = viewDate === today;
 
-  const [entry, setEntry] = useState({ log: "", reflection: "", mood: null, energy: null });
+  const cachedStatic = getCache(STATIC_CACHE_KEY);
+  const cachedDay = getCache(dayCacheKey(today));
+
+  const [entry, setEntry] = useState(
+    cachedDay?.entry || { log: "", reflection: "", mood: null, energy: null }
+  );
   const [saved, setSaved] = useState(true);
-  const [todos, setTodos] = useState([]);
-  const [deferredTodos, setDeferredTodos] = useState([]);
+  const [todos, setTodos] = useState(cachedStatic?.todos || []);
+  const [deferredTodos, setDeferredTodos] = useState(cachedStatic?.deferred || []);
   const [bringingBackId, setBringingBackId] = useState(null);
   const [newTodo, setNewTodo] = useState("");
   const [addingTodo, setAddingTodo] = useState(false);
-  const [items, setItems] = useState([]);
+  const [items, setItems] = useState(cachedStatic?.items || []);
   const [learnNote, setLearnNote] = useState("");
   const [learnItemId, setLearnItemId] = useState("");
   const [addingLearn, setAddingLearn] = useState(false);
-  const [dayLogs, setDayLogs] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [dayLogs, setDayLogs] = useState(cachedDay?.dayLogs || []);
+  const [loading, setLoading] = useState(!(cachedStatic && cachedDay));
   const [switching, setSwitching] = useState(false);
   const [staticError, setStaticError] = useState(null);
   const [staticReloadTick, setStaticReloadTick] = useState(0);
@@ -76,12 +87,16 @@ export default function TodayPage() {
           fetchJson("/api/learning"),
         ]);
         if (cancelled) return;
-        setTodos(todosRes.todos || []);
-        setDeferredTodos(todosRes.deferred || []);
+        const nextTodos = todosRes.todos || [];
+        const nextDeferred = todosRes.deferred || [];
         // Only "active" tracks belong in the quick-capture dropdown --
         // paused ones are exactly the tracks you said you're not currently
         // working on, so they shouldn't keep showing up here every time.
-        setItems((itemsRes.items || []).filter((i) => i.status === "active"));
+        const nextItems = (itemsRes.items || []).filter((i) => i.status === "active");
+        setTodos(nextTodos);
+        setDeferredTodos(nextDeferred);
+        setItems(nextItems);
+        setCache(STATIC_CACHE_KEY, { todos: nextTodos, deferred: nextDeferred, items: nextItems });
       } catch (err) {
         if (!cancelled) setStaticError(err.message || "Couldn't load todos and learning tracks.");
       }
@@ -97,12 +112,20 @@ export default function TodayPage() {
   // unrelated or oversized data).
   useEffect(() => {
     let cancelled = false;
+
+    // If we already have this day cached (e.g. hopping back to a date we
+    // just looked at), show it immediately instead of a spinner, and still
+    // refetch in the background to pick up anything that changed elsewhere.
+    const cachedForThisDay = getCache(dayCacheKey(viewDate));
+    if (cachedForThisDay) {
+      setEntry(cachedForThisDay.entry);
+      setDayLogs(cachedForThisDay.dayLogs);
+      setLoading(false);
+    } else if (!loading) {
+      setSwitching(true);
+    }
+
     (async () => {
-      if (loading) {
-        // first load only
-      } else {
-        setSwitching(true);
-      }
       setDayError(null);
       try {
         const [journalRes, logsRes] = await Promise.all([
@@ -110,17 +133,18 @@ export default function TodayPage() {
           fetchJson(`/api/learning/log?date=${viewDate}`),
         ]);
         if (cancelled) return;
-        setEntry(
-          journalRes.entry
-            ? {
-                log: journalRes.entry.log || "",
-                reflection: journalRes.entry.reflection || "",
-                mood: journalRes.entry.mood,
-                energy: journalRes.entry.energy,
-              }
-            : { log: "", reflection: "", mood: null, energy: null }
-        );
-        setDayLogs(logsRes.logs || []);
+        const nextEntry = journalRes.entry
+          ? {
+              log: journalRes.entry.log || "",
+              reflection: journalRes.entry.reflection || "",
+              mood: journalRes.entry.mood,
+              energy: journalRes.entry.energy,
+            }
+          : { log: "", reflection: "", mood: null, energy: null };
+        const nextDayLogs = logsRes.logs || [];
+        setEntry(nextEntry);
+        setDayLogs(nextDayLogs);
+        setCache(dayCacheKey(viewDate), { entry: nextEntry, dayLogs: nextDayLogs });
       } catch (err) {
         if (!cancelled) setDayError(err.message || "Couldn't load this day.");
       } finally {
@@ -138,13 +162,18 @@ export default function TodayPage() {
 
   async function refreshTodos() {
     const res = await fetchJson(`/api/todos?today=${today}`);
-    setTodos(res.todos || []);
-    setDeferredTodos(res.deferred || []);
+    const nextTodos = res.todos || [];
+    const nextDeferred = res.deferred || [];
+    setTodos(nextTodos);
+    setDeferredTodos(nextDeferred);
+    setCache(STATIC_CACHE_KEY, { todos: nextTodos, deferred: nextDeferred, items });
   }
 
   async function refreshDayLogs() {
     const res = await fetchJson(`/api/learning/log?date=${viewDate}`);
-    setDayLogs(res.logs || []);
+    const nextDayLogs = res.logs || [];
+    setDayLogs(nextDayLogs);
+    setCache(dayCacheKey(viewDate), { entry, dayLogs: nextDayLogs });
   }
 
   async function saveEntry(next) {
@@ -158,6 +187,7 @@ export default function TodayPage() {
         body: JSON.stringify({ date: viewDate, ...merged }),
       });
       setActionError(null);
+      setCache(dayCacheKey(viewDate), { entry: merged, dayLogs });
     } catch (err) {
       // Leave `saved` false -- the "Saving…" indicator staying up is itself
       // the signal something's wrong, on top of the banner.
@@ -188,7 +218,8 @@ export default function TodayPage() {
   }
 
   async function toggleTodo(id, done) {
-    setTodos((t) => t.map((x) => (x.id === id ? { ...x, done: done ? 1 : 0 } : x)));
+    const nextTodos = todos.map((x) => (x.id === id ? { ...x, done: done ? 1 : 0 } : x));
+    setTodos(nextTodos);
     try {
       await fetchJson("/api/todos", {
         method: "PATCH",
@@ -196,6 +227,7 @@ export default function TodayPage() {
         body: JSON.stringify({ id, done }),
       });
       setActionError(null);
+      setCache(STATIC_CACHE_KEY, { todos: nextTodos, deferred: deferredTodos, items });
     } catch (err) {
       setActionError(err.message || "Couldn't update that todo.");
       await refreshTodos().catch(() => {}); // undo the optimistic flip with server truth
@@ -204,10 +236,12 @@ export default function TodayPage() {
 
   async function deleteTodo(id) {
     const prev = todos;
-    setTodos((t) => t.filter((x) => x.id !== id));
+    const nextTodos = todos.filter((x) => x.id !== id);
+    setTodos(nextTodos);
     try {
       await fetchJson(`/api/todos?id=${id}`, { method: "DELETE" });
       setActionError(null);
+      setCache(STATIC_CACHE_KEY, { todos: nextTodos, deferred: deferredTodos, items });
     } catch (err) {
       setActionError(err.message || "Couldn't remove that todo.");
       setTodos(prev);
@@ -223,10 +257,10 @@ export default function TodayPage() {
     const prevDeferred = deferredTodos;
     const moved = todos.find((x) => x.id === id);
     const tomorrow = shiftDate(today, 1);
-    setTodos((t) => t.filter((x) => x.id !== id));
-    if (moved) {
-      setDeferredTodos((d) => [...d, { ...moved, defer_until: tomorrow }]);
-    }
+    const nextTodos = todos.filter((x) => x.id !== id);
+    const nextDeferred = moved ? [...deferredTodos, { ...moved, defer_until: tomorrow }] : deferredTodos;
+    setTodos(nextTodos);
+    setDeferredTodos(nextDeferred);
     try {
       await fetchJson("/api/todos", {
         method: "PATCH",
@@ -234,6 +268,7 @@ export default function TodayPage() {
         body: JSON.stringify({ id, defer_until: tomorrow }),
       });
       setActionError(null);
+      setCache(STATIC_CACHE_KEY, { todos: nextTodos, deferred: nextDeferred, items });
     } catch (err) {
       setActionError(err.message || "Couldn't move that todo to tomorrow.");
       setTodos(prevTodos);

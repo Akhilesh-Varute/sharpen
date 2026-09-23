@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Spinner from "../../components/Spinner";
 import ErrorBanner from "../../components/ErrorBanner";
 import { fetchJson } from "../../lib/fetchJson";
+import { getCache, setCache } from "../../lib/pageCache";
 
 function daysAgo(dateStr) {
   const then = new Date(dateStr + "T00:00:00");
@@ -15,14 +16,17 @@ function daysAgo(dateStr) {
   return `${diff} days ago`;
 }
 
+const CACHE_KEY = "learning";
+
 export default function LearningPage() {
-  const [items, setItems] = useState([]);
+  const cached = getCache(CACHE_KEY);
+  const [items, setItems] = useState(cached?.items || []);
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("");
   const [addingItem, setAddingItem] = useState(false);
   const [statusBusyId, setStatusBusyId] = useState(null);
   const [pendingStatus, setPendingStatus] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!cached);
   const [expanded, setExpanded] = useState({});
   const [loadError, setLoadError] = useState(null);
   const [actionError, setActionError] = useState(null);
@@ -31,7 +35,9 @@ export default function LearningPage() {
     setLoadError(null);
     try {
       const res = await fetchJson("/api/learning");
-      setItems(res.items || []);
+      const nextItems = res.items || [];
+      setItems(nextItems);
+      setCache(CACHE_KEY, { items: nextItems });
     } catch (err) {
       setLoadError(err.message || "Couldn't load learning tracks.");
     } finally {
