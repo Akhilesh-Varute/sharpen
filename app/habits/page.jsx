@@ -113,7 +113,7 @@ export default function HabitsPage() {
           onChange={(e) => setNewHabit(e.target.value)}
           placeholder="New habit…"
           disabled={addingHabit}
-          className="flex-1 border border-line dark:border-dline bg-paper dark:bg-dpaper rounded-sm2 px-3.5 py-3 text-base focus:outline-none focus:ring-[3px] focus:ring-accent/20 dark:focus:ring-daccent/20 disabled:opacity-60"
+          className="flex-1 min-w-0 border border-line dark:border-dline bg-paper dark:bg-dpaper rounded-sm2 px-3.5 py-3 text-base focus:outline-none focus:ring-[3px] focus:ring-accent/20 dark:focus:ring-daccent/20 disabled:opacity-60"
         />
         <button
           disabled={addingHabit || !newHabit.trim()}
@@ -129,8 +129,8 @@ export default function HabitsPage() {
             key={h.id}
             className="bg-card dark:bg-dcard border border-line-soft dark:border-dline-soft rounded-lg2 shadow-card p-4 space-y-3"
           >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-3 min-w-0">
                 <button
                   onClick={() => toggle(h, today, !h.doneToday)}
                   className={`w-11 h-11 rounded-full border flex items-center justify-center transition ${
@@ -139,13 +139,13 @@ export default function HabitsPage() {
                       : "bg-paper dark:bg-dpaper border-line dark:border-dline"
                   }`}
                 >
-                  {h.doneToday && (
+                  {!!h.doneToday && (
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
                       <path d="M20 6 9 17l-5-5" />
                     </svg>
                   )}
                 </button>
-                <span className="font-semibold text-base">{h.name}</span>
+                <span className="font-semibold text-base truncate">{h.name}</span>
               </div>
               <div className="flex items-center gap-3">
                 <span className="text-base font-mono font-tabular text-accent-strong dark:text-daccent-strong">

@@ -163,7 +163,7 @@ export default function TodayPage() {
   return (
     <div className="space-y-6">
       <header className="pt-1 flex items-center justify-between gap-2">
-        <div>
+        <div className="min-w-0 flex-1">
           <div className="text-xs font-mono uppercase tracking-[0.08em] text-accent dark:text-daccent font-semibold flex items-center gap-2">
             {new Date(viewDate + "T00:00:00").toLocaleDateString(undefined, {
               weekday: "long",
@@ -273,7 +273,7 @@ export default function TodayPage() {
               onChange={(e) => setNewTodo(e.target.value)}
               placeholder="Add a todo…"
               disabled={addingTodo}
-              className="flex-1 border border-line dark:border-dline bg-paper dark:bg-dpaper rounded-sm2 px-3.5 py-3 text-base focus:outline-none focus:ring-[3px] focus:ring-accent/20 dark:focus:ring-daccent/20 disabled:opacity-60"
+              className="flex-1 min-w-0 border border-line dark:border-dline bg-paper dark:bg-dpaper rounded-sm2 px-3.5 py-3 text-base focus:outline-none focus:ring-[3px] focus:ring-accent/20 dark:focus:ring-daccent/20 disabled:opacity-60"
             />
             <button
               disabled={addingTodo || !newTodo.trim()}
@@ -296,13 +296,13 @@ export default function TodayPage() {
                       : "bg-paper dark:bg-dpaper border-line dark:border-dline"
                   }`}
                 >
-                  {t.done && (
+                  {!!t.done && (
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
                       <path d="M20 6 9 17l-5-5" />
                     </svg>
                   )}
                 </button>
-                <span className={`flex-1 text-base ${t.done ? "line-through text-ink-faint dark:text-dink-faint" : ""}`}>
+                <span className={`flex-1 min-w-0 text-base ${t.done ? "line-through text-ink-faint dark:text-dink-faint" : ""}`}>
                   {t.text}
                 </span>
                 <button
@@ -345,7 +345,7 @@ export default function TodayPage() {
             onChange={(e) => setLearnNote(e.target.value)}
             placeholder="One thing you learned…"
             disabled={addingLearn}
-            className="flex-1 border border-line dark:border-dline bg-paper dark:bg-dpaper rounded-sm2 px-3.5 py-3 text-base focus:outline-none focus:ring-[3px] focus:ring-accent/20 dark:focus:ring-daccent/20 disabled:opacity-60"
+            className="flex-1 min-w-0 border border-line dark:border-dline bg-paper dark:bg-dpaper rounded-sm2 px-3.5 py-3 text-base focus:outline-none focus:ring-[3px] focus:ring-accent/20 dark:focus:ring-daccent/20 disabled:opacity-60"
           />
           <button
             disabled={addingLearn || !learnNote.trim()}

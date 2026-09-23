@@ -91,7 +91,7 @@ export default function LearningPage() {
           onChange={(e) => setTitle(e.target.value)}
           placeholder="What are you learning?"
           disabled={addingItem}
-          className="flex-1 border border-line dark:border-dline bg-paper dark:bg-dpaper rounded-sm2 px-3 py-3 text-base focus:outline-none focus:ring-[3px] focus:ring-accent/20 dark:focus:ring-daccent/20 disabled:opacity-60"
+          className="flex-1 min-w-0 border border-line dark:border-dline bg-paper dark:bg-dpaper rounded-sm2 px-3 py-3 text-base focus:outline-none focus:ring-[3px] focus:ring-accent/20 dark:focus:ring-daccent/20 disabled:opacity-60"
         />
         <input
           value={category}
@@ -119,7 +119,7 @@ export default function LearningPage() {
               }`}
             >
               <div className="flex items-start justify-between gap-2">
-                <div>
+                <div className="min-w-0 flex-1">
                   <span className="font-semibold text-base">{item.title}</span>
                   {item.logCount > 0 && (
                     <div className="text-xs font-mono text-ink-faint dark:text-dink-faint mt-0.5">
