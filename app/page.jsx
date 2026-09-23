@@ -55,7 +55,7 @@ export default function TodayPage() {
     let cancelled = false;
     (async () => {
       const [todosRes, itemsRes] = await Promise.all([
-        fetch("/api/todos").then((r) => r.json()),
+        fetch(`/api/todos?today=${today}`).then((r) => r.json()),
         fetch("/api/learning").then((r) => r.json()),
       ]);
       if (cancelled) return;
@@ -127,7 +127,7 @@ export default function TodayPage() {
         body: JSON.stringify({ text: newTodo }),
       });
       setNewTodo("");
-      const res = await fetch("/api/todos").then((r) => r.json());
+      const res = await fetch(`/api/todos?today=${today}`).then((r) => r.json());
       setTodos(res.todos || []);
     } finally {
       setAddingTodo(false);
@@ -146,6 +146,17 @@ export default function TodayPage() {
   async function deleteTodo(id) {
     setTodos((t) => t.filter((x) => x.id !== id));
     await fetch(`/api/todos?id=${id}`, { method: "DELETE" });
+  }
+
+  async function deferTodoToTomorrow(id) {
+    // Optimistically drop it from today's list — it'll come back on its own
+    // once that date rolls around (see the `today` filter on GET /api/todos).
+    setTodos((t) => t.filter((x) => x.id !== id));
+    await fetch("/api/todos", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, defer_until: shiftDate(today, 1) }),
+    });
   }
 
   async function addLearning(e) {
@@ -324,6 +335,18 @@ export default function TodayPage() {
                 <span className={`flex-1 min-w-0 text-base ${t.done ? "line-through text-ink-faint dark:text-dink-faint" : ""}`}>
                   {t.text}
                 </span>
+                {!t.done && (
+                  <button
+                    onClick={() => deferTodoToTomorrow(t.id)}
+                    aria-label="Move to tomorrow"
+                    title="Move to tomorrow"
+                    className="flex-none w-9 h-9 -my-1 flex items-center justify-center text-ink-faint dark:text-dink-faint active:text-accent dark:active:text-daccent"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+                      <path d="M5 12h14M13 6l6 6-6 6" />
+                    </svg>
+                  </button>
+                )}
                 <button
                   onClick={() => deleteTodo(t.id)}
                   aria-label="Remove todo"

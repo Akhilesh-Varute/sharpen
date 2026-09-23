@@ -41,7 +41,8 @@ CREATE TABLE IF NOT EXISTS todos (
   text TEXT NOT NULL,
   done INTEGER NOT NULL DEFAULT 0,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-  completed_at TEXT
+  completed_at TEXT,
+  defer_until TEXT
 );
 
 CREATE TABLE IF NOT EXISTS habits (
@@ -86,11 +87,23 @@ CREATE INDEX IF NOT EXISTS idx_learning_log_date ON learning_log(log_date);
 CREATE INDEX IF NOT EXISTS idx_learning_log_item ON learning_log(learning_item_id);
 `;
 
+// CREATE TABLE IF NOT EXISTS only helps on a fresh database -- an existing
+// todos table from before defer_until existed needs the column added by
+// hand. Safe to rerun: it only ALTERs when the column is actually missing.
+async function ensureColumn(table, column, ddl) {
+  const { rows } = await db.execute(`PRAGMA table_info(${table})`);
+  if (rows.some((r) => r.name === column)) return;
+  await db.execute(`ALTER TABLE ${table} ADD COLUMN ${ddl}`);
+  console.log(`Added ${table}.${column}.`);
+}
+
 async function main() {
   for (const stmt of schema.split(";").map((s) => s.trim()).filter(Boolean)) {
     await db.execute(stmt);
   }
   console.log("Tables ready.");
+
+  await ensureColumn("todos", "defer_until", "defer_until TEXT");
 
   const { rows } = await db.execute("SELECT COUNT(*) as c FROM habits");
   if (rows[0].c === 0) {
