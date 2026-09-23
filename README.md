@@ -78,9 +78,20 @@ scheduled GitHub Action (`.github/workflows/backup.yml`) that runs
 ask for this to be wired up once the app is deployed and the repo exists,
 since it needs the Turso credentials added as GitHub Actions secrets first.
 
-## Known, low-risk item
+## Known issues
 
-`npm audit` flags a PostCSS source-map path-traversal advisory pulled in by
-Next 14's build tooling. It only matters if something untrusted controls a
-CSS source map at *build* time, which nothing here does — safe to ignore
-for now, and it'll clear itself out whenever this gets upgraded to Next 15/16.
+- **Next.js is overdue for an upgrade.** `npm audit` turns up a long list of
+  advisories against 14.2.35 (the latest 14.x release — there's no patched
+  14.x to bump to), the significant one being an unauthenticated RCE in the
+  Image Optimization API when AVIF is involved, fixed only in >=15.5.24.
+  This app never uses `next/image`, so as a stopgap `next.config.mjs` sets
+  `images.unoptimized: true`, which removes that endpoint's exposure
+  without needing the upgrade right away. The PostCSS source-map advisory
+  (path traversal at *build* time only — nothing here feeds it an untrusted
+  map) stays genuinely low-risk. The real fix for all of it is upgrading to
+  Next 15 or 16, which is a bigger, separate piece of work (breaking
+  changes to review, not a drop-in bump).
+- **The login PIN has no rate limiting.** It's a 6-digit numeric PIN with no
+  lockout or throttling on `/api/login`, so it's brute-forceable by anyone
+  who finds the URL. Fine while the URL isn't shared, but worth adding
+  basic rate limiting before treating this as hardened.
