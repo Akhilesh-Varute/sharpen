@@ -72,11 +72,18 @@ enter your PIN, then Share → Add to Home Screen.
 you can also run `turso db shell sharpen .dump > backup.sql` anytime for a
 raw SQL dump that any SQLite tool can read.
 
-To make this automatic instead of something you have to remember: add a
-scheduled GitHub Action (`.github/workflows/backup.yml`) that runs
-`npm run db:backup` nightly and commits the result to a **private** repo —
-ask for this to be wired up once the app is deployed and the repo exists,
-since it needs the Turso credentials added as GitHub Actions secrets first.
+This now runs automatically: `.github/workflows/backup.yml` runs
+`npm run db:backup` nightly (00:00 IST) and commits the result to this repo
+(force-added past `backups/` in `.gitignore`, since the point here is to
+keep them). It needs two repo secrets, one-time setup — GitHub → this
+repo → Settings → Secrets and variables → Actions → New repository secret:
+
+- `TURSO_DATABASE_URL`
+- `TURSO_AUTH_TOKEN`
+
+(same production values as in Vercel's env vars). You can also trigger a
+backup on demand from the Actions tab ("Nightly backup" → Run workflow)
+without waiting for the schedule.
 
 ## Known issues
 
