@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Spinner from "../../components/Spinner";
+import ErrorBanner from "../../components/ErrorBanner";
+import { fetchJson } from "../../lib/fetchJson";
 
 function daysAgo(dateStr) {
   const then = new Date(dateStr + "T00:00:00");
@@ -21,11 +23,19 @@ export default function LearningPage() {
   const [statusBusyId, setStatusBusyId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState({});
+  const [loadError, setLoadError] = useState(null);
+  const [actionError, setActionError] = useState(null);
 
   async function load() {
-    const res = await fetch("/api/learning").then((r) => r.json());
-    setItems(res.items || []);
-    setLoading(false);
+    setLoadError(null);
+    try {
+      const res = await fetchJson("/api/learning");
+      setItems(res.items || []);
+    } catch (err) {
+      setLoadError(err.message || "Couldn't load learning tracks.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
@@ -37,14 +47,17 @@ export default function LearningPage() {
     if (!title.trim() || addingItem) return;
     setAddingItem(true);
     try {
-      await fetch("/api/learning", {
+      await fetchJson("/api/learning", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title, category }),
       });
       setTitle("");
       setCategory("");
+      setActionError(null);
       await load();
+    } catch (err) {
+      setActionError(err.message || "Couldn't add that track.");
     } finally {
       setAddingItem(false);
     }
@@ -53,12 +66,15 @@ export default function LearningPage() {
   async function setStatus(id, status) {
     setStatusBusyId(id);
     try {
-      await fetch("/api/learning", {
+      await fetchJson("/api/learning", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, status }),
       });
+      setActionError(null);
       await load();
+    } catch (err) {
+      setActionError(err.message || "Couldn't update that track.");
     } finally {
       setStatusBusyId(null);
     }
@@ -84,6 +100,11 @@ export default function LearningPage() {
         </div>
         <h1 className="text-2xl font-display font-medium mt-1">Learning</h1>
       </header>
+
+      {loadError && <ErrorBanner message={loadError} onRetry={load} />}
+      {actionError && (
+        <ErrorBanner message={actionError} onRetry={() => setActionError(null)} retryLabel="Dismiss" />
+      )}
 
       <form onSubmit={addItem} className="flex gap-2">
         <input

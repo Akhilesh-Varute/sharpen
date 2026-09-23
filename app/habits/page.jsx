@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Spinner from "../../components/Spinner";
+import ErrorBanner from "../../components/ErrorBanner";
+import { fetchJson } from "../../lib/fetchJson";
 
 function todayStr() {
   const d = new Date();
@@ -30,11 +32,19 @@ export default function HabitsPage() {
   const [addingHabit, setAddingHabit] = useState(false);
   const [archivingId, setArchivingId] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
+  const [actionError, setActionError] = useState(null);
 
   async function load() {
-    const res = await fetch(`/api/habits?today=${today}`).then((r) => r.json());
-    setHabits(res.habits || []);
-    setLoading(false);
+    setLoadError(null);
+    try {
+      const res = await fetchJson(`/api/habits?today=${today}`);
+      setHabits(res.habits || []);
+    } catch (err) {
+      setLoadError(err.message || "Couldn't load habits.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
@@ -43,6 +53,7 @@ export default function HabitsPage() {
   }, []);
 
   async function toggle(habit, date, done) {
+    const prevHabits = habits;
     setHabits((hs) =>
       hs.map((h) =>
         h.id === habit.id
@@ -54,12 +65,18 @@ export default function HabitsPage() {
           : h
       )
     );
-    await fetch("/api/habits/log", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ habit_id: habit.id, date, done }),
-    });
-    load();
+    try {
+      await fetchJson("/api/habits/log", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ habit_id: habit.id, date, done }),
+      });
+      setActionError(null);
+      await load();
+    } catch (err) {
+      setActionError(err.message || "Couldn't update that habit.");
+      setHabits(prevHabits);
+    }
   }
 
   async function addHabit(e) {
@@ -67,13 +84,16 @@ export default function HabitsPage() {
     if (!newHabit.trim() || addingHabit) return;
     setAddingHabit(true);
     try {
-      await fetch("/api/habits", {
+      await fetchJson("/api/habits", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: newHabit }),
       });
       setNewHabit("");
+      setActionError(null);
       await load();
+    } catch (err) {
+      setActionError(err.message || "Couldn't add that habit.");
     } finally {
       setAddingHabit(false);
     }
@@ -82,8 +102,11 @@ export default function HabitsPage() {
   async function archive(id) {
     setArchivingId(id);
     try {
-      await fetch(`/api/habits?id=${id}`, { method: "DELETE" });
+      await fetchJson(`/api/habits?id=${id}`, { method: "DELETE" });
+      setActionError(null);
       await load();
+    } catch (err) {
+      setActionError(err.message || "Couldn't archive that habit.");
     } finally {
       setArchivingId(null);
     }
@@ -106,6 +129,11 @@ export default function HabitsPage() {
         </div>
         <h1 className="text-2xl font-display font-medium mt-1">Habits</h1>
       </header>
+
+      {loadError && <ErrorBanner message={loadError} onRetry={load} />}
+      {actionError && (
+        <ErrorBanner message={actionError} onRetry={() => setActionError(null)} retryLabel="Dismiss" />
+      )}
 
       <form onSubmit={addHabit} className="flex gap-2">
         <input

@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Spinner from "../components/Spinner";
+import ErrorBanner from "../components/ErrorBanner";
+import { fetchJson } from "../lib/fetchJson";
 
 function toDateStr(d) {
   const y = d.getFullYear();
@@ -48,6 +50,15 @@ export default function TodayPage() {
   const [dayLogs, setDayLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [switching, setSwitching] = useState(false);
+  const [staticError, setStaticError] = useState(null);
+  const [staticReloadTick, setStaticReloadTick] = useState(0);
+  const [dayError, setDayError] = useState(null);
+  const [dayReloadTick, setDayReloadTick] = useState(0);
+  // One shared banner for any mutation failure (add/toggle/delete/defer a
+  // todo, log a learning entry, save the journal) rather than a separate
+  // error UI per action -- these are all "something didn't save, try
+  // again" in practice.
+  const [actionError, setActionError] = useState(null);
 
   // Todos and learning tracks aren't tied to viewDate at all — they used to
   // get refetched on every prev/next tap for no reason. Load them once, on
@@ -55,19 +66,24 @@ export default function TodayPage() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const [todosRes, itemsRes] = await Promise.all([
-        fetch(`/api/todos?today=${today}`).then((r) => r.json()),
-        fetch("/api/learning").then((r) => r.json()),
-      ]);
-      if (cancelled) return;
-      setTodos(todosRes.todos || []);
-      setDeferredCount(todosRes.deferredCount || 0);
-      setItems((itemsRes.items || []).filter((i) => i.status !== "done"));
+      setStaticError(null);
+      try {
+        const [todosRes, itemsRes] = await Promise.all([
+          fetchJson(`/api/todos?today=${today}`),
+          fetchJson("/api/learning"),
+        ]);
+        if (cancelled) return;
+        setTodos(todosRes.todos || []);
+        setDeferredCount(todosRes.deferredCount || 0);
+        setItems((itemsRes.items || []).filter((i) => i.status !== "done"));
+      } catch (err) {
+        if (!cancelled) setStaticError(err.message || "Couldn't load todos and learning tracks.");
+      }
     })();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [staticReloadTick]);
 
   // Only the journal entry and that day's learning log actually depend on
   // viewDate, so this is what prev/next re-fetches — two small, indexed,
@@ -81,40 +97,67 @@ export default function TodayPage() {
       } else {
         setSwitching(true);
       }
-      const [journalRes, logsRes] = await Promise.all([
-        fetch(`/api/journal?date=${viewDate}`).then((r) => r.json()),
-        fetch(`/api/learning/log?date=${viewDate}`).then((r) => r.json()),
-      ]);
-      if (cancelled) return;
-      setEntry(
-        journalRes.entry
-          ? {
-              log: journalRes.entry.log || "",
-              reflection: journalRes.entry.reflection || "",
-              mood: journalRes.entry.mood,
-              energy: journalRes.entry.energy,
-            }
-          : { log: "", reflection: "", mood: null, energy: null }
-      );
-      setDayLogs(logsRes.logs || []);
-      setLoading(false);
-      setSwitching(false);
+      setDayError(null);
+      try {
+        const [journalRes, logsRes] = await Promise.all([
+          fetchJson(`/api/journal?date=${viewDate}`),
+          fetchJson(`/api/learning/log?date=${viewDate}`),
+        ]);
+        if (cancelled) return;
+        setEntry(
+          journalRes.entry
+            ? {
+                log: journalRes.entry.log || "",
+                reflection: journalRes.entry.reflection || "",
+                mood: journalRes.entry.mood,
+                energy: journalRes.entry.energy,
+              }
+            : { log: "", reflection: "", mood: null, energy: null }
+        );
+        setDayLogs(logsRes.logs || []);
+      } catch (err) {
+        if (!cancelled) setDayError(err.message || "Couldn't load this day.");
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+          setSwitching(false);
+        }
+      }
     })();
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewDate]);
+  }, [viewDate, dayReloadTick]);
+
+  async function refreshTodos() {
+    const res = await fetchJson(`/api/todos?today=${today}`);
+    setTodos(res.todos || []);
+    setDeferredCount(res.deferredCount || 0);
+  }
+
+  async function refreshDayLogs() {
+    const res = await fetchJson(`/api/learning/log?date=${viewDate}`);
+    setDayLogs(res.logs || []);
+  }
 
   async function saveEntry(next) {
     const merged = { ...entry, ...next };
     setEntry(merged);
     setSaved(false);
-    await fetch("/api/journal", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ date: viewDate, ...merged }),
-    });
+    try {
+      await fetchJson("/api/journal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date: viewDate, ...merged }),
+      });
+      setActionError(null);
+    } catch (err) {
+      // Leave `saved` false -- the "Saving…" indicator staying up is itself
+      // the signal something's wrong, on top of the banner.
+      setActionError(err.message || "Couldn't save your journal entry.");
+      return;
+    }
     setSaved(true);
   }
 
@@ -123,15 +166,16 @@ export default function TodayPage() {
     if (!newTodo.trim() || addingTodo) return;
     setAddingTodo(true);
     try {
-      await fetch("/api/todos", {
+      await fetchJson("/api/todos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: newTodo }),
       });
       setNewTodo("");
-      const res = await fetch(`/api/todos?today=${today}`).then((r) => r.json());
-      setTodos(res.todos || []);
-      setDeferredCount(res.deferredCount || 0);
+      await refreshTodos();
+      setActionError(null);
+    } catch (err) {
+      setActionError(err.message || "Couldn't add that todo.");
     } finally {
       setAddingTodo(false);
     }
@@ -139,28 +183,49 @@ export default function TodayPage() {
 
   async function toggleTodo(id, done) {
     setTodos((t) => t.map((x) => (x.id === id ? { ...x, done: done ? 1 : 0 } : x)));
-    await fetch("/api/todos", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, done }),
-    });
+    try {
+      await fetchJson("/api/todos", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, done }),
+      });
+      setActionError(null);
+    } catch (err) {
+      setActionError(err.message || "Couldn't update that todo.");
+      await refreshTodos().catch(() => {}); // undo the optimistic flip with server truth
+    }
   }
 
   async function deleteTodo(id) {
+    const prev = todos;
     setTodos((t) => t.filter((x) => x.id !== id));
-    await fetch(`/api/todos?id=${id}`, { method: "DELETE" });
+    try {
+      await fetchJson(`/api/todos?id=${id}`, { method: "DELETE" });
+      setActionError(null);
+    } catch (err) {
+      setActionError(err.message || "Couldn't remove that todo.");
+      setTodos(prev);
+    }
   }
 
   async function deferTodoToTomorrow(id) {
     // Optimistically drop it from today's list — it'll come back on its own
     // once that date rolls around (see the `today` filter on GET /api/todos).
+    const prev = todos;
     setTodos((t) => t.filter((x) => x.id !== id));
     setDeferredCount((c) => c + 1);
-    await fetch("/api/todos", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, defer_until: shiftDate(today, 1) }),
-    });
+    try {
+      await fetchJson("/api/todos", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, defer_until: shiftDate(today, 1) }),
+      });
+      setActionError(null);
+    } catch (err) {
+      setActionError(err.message || "Couldn't move that todo to tomorrow.");
+      setTodos(prev);
+      setDeferredCount((c) => Math.max(0, c - 1));
+    }
   }
 
   async function addLearning(e) {
@@ -168,7 +233,7 @@ export default function TodayPage() {
     if (!learnNote.trim() || addingLearn) return;
     setAddingLearn(true);
     try {
-      await fetch("/api/learning/log", {
+      await fetchJson("/api/learning/log", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -178,8 +243,10 @@ export default function TodayPage() {
         }),
       });
       setLearnNote("");
-      const res = await fetch(`/api/learning/log?date=${viewDate}`).then((r) => r.json());
-      setDayLogs(res.logs || []);
+      await refreshDayLogs();
+      setActionError(null);
+    } catch (err) {
+      setActionError(err.message || "Couldn't log that.");
     } finally {
       setAddingLearn(false);
     }
@@ -238,6 +305,16 @@ export default function TodayPage() {
           </button>
         </div>
       </header>
+
+      {dayError && (
+        <ErrorBanner message={dayError} onRetry={() => setDayReloadTick((t) => t + 1)} />
+      )}
+      {staticError && (
+        <ErrorBanner message={staticError} onRetry={() => setStaticReloadTick((t) => t + 1)} />
+      )}
+      {actionError && (
+        <ErrorBanner message={actionError} onRetry={() => setActionError(null)} retryLabel="Dismiss" />
+      )}
 
       {!isToday && (
         <button
