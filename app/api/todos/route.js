@@ -26,18 +26,23 @@ export async function GET(req) {
         `
   );
 
-  // So the list doesn't look like deferred todos just vanished: a small
-  // count of what's waiting for a later day, shown next to the heading.
-  let deferredCount = 0;
+  // So deferred todos aren't just invisible until their date arrives:
+  // return the actual list (not just a count) so the page can show what's
+  // waiting and let you pull one back early if you change your mind.
+  let deferred = [];
   if (today) {
-    const { rows: countRows } = await db.execute({
-      sql: "SELECT COUNT(*) as c FROM todos WHERE defer_until > ? AND done = 0",
+    const { rows: deferredRows } = await db.execute({
+      sql: `
+        SELECT * FROM todos
+        WHERE defer_until > ? AND done = 0
+        ORDER BY defer_until ASC, created_at DESC
+      `,
       args: [today],
     });
-    deferredCount = countRows[0].c;
+    deferred = deferredRows;
   }
 
-  return NextResponse.json({ todos: rows, deferredCount });
+  return NextResponse.json({ todos: rows, deferred, deferredCount: deferred.length });
 }
 
 export async function POST(req) {

@@ -26,6 +26,8 @@ function formatHeading(dateStr, today) {
   if (dateStr === today) return "Today";
   const yesterday = shiftDate(today, -1);
   if (dateStr === yesterday) return "Yesterday";
+  const tomorrow = shiftDate(today, 1);
+  if (dateStr === tomorrow) return "Tomorrow";
   const d = new Date(dateStr + "T00:00:00");
   return d.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
 }
@@ -40,7 +42,8 @@ export default function TodayPage() {
   const [entry, setEntry] = useState({ log: "", reflection: "", mood: null, energy: null });
   const [saved, setSaved] = useState(true);
   const [todos, setTodos] = useState([]);
-  const [deferredCount, setDeferredCount] = useState(0);
+  const [deferredTodos, setDeferredTodos] = useState([]);
+  const [bringingBackId, setBringingBackId] = useState(null);
   const [newTodo, setNewTodo] = useState("");
   const [addingTodo, setAddingTodo] = useState(false);
   const [items, setItems] = useState([]);
@@ -74,7 +77,7 @@ export default function TodayPage() {
         ]);
         if (cancelled) return;
         setTodos(todosRes.todos || []);
-        setDeferredCount(todosRes.deferredCount || 0);
+        setDeferredTodos(todosRes.deferred || []);
         // Only "active" tracks belong in the quick-capture dropdown --
         // paused ones are exactly the tracks you said you're not currently
         // working on, so they shouldn't keep showing up here every time.
@@ -136,7 +139,7 @@ export default function TodayPage() {
   async function refreshTodos() {
     const res = await fetchJson(`/api/todos?today=${today}`);
     setTodos(res.todos || []);
-    setDeferredCount(res.deferredCount || 0);
+    setDeferredTodos(res.deferred || []);
   }
 
   async function refreshDayLogs() {
@@ -212,22 +215,49 @@ export default function TodayPage() {
   }
 
   async function deferTodoToTomorrow(id) {
-    // Optimistically drop it from today's list — it'll come back on its own
-    // once that date rolls around (see the `today` filter on GET /api/todos).
-    const prev = todos;
+    // Optimistically drop it from today's list into the "Later" list -- it
+    // also comes back on its own once that date rolls around (see the
+    // `today` filter on GET /api/todos), this just makes it visible and
+    // reversible in the meantime instead of appearing to vanish.
+    const prevTodos = todos;
+    const prevDeferred = deferredTodos;
+    const moved = todos.find((x) => x.id === id);
+    const tomorrow = shiftDate(today, 1);
     setTodos((t) => t.filter((x) => x.id !== id));
-    setDeferredCount((c) => c + 1);
+    if (moved) {
+      setDeferredTodos((d) => [...d, { ...moved, defer_until: tomorrow }]);
+    }
     try {
       await fetchJson("/api/todos", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, defer_until: shiftDate(today, 1) }),
+        body: JSON.stringify({ id, defer_until: tomorrow }),
       });
       setActionError(null);
     } catch (err) {
       setActionError(err.message || "Couldn't move that todo to tomorrow.");
-      setTodos(prev);
-      setDeferredCount((c) => Math.max(0, c - 1));
+      setTodos(prevTodos);
+      setDeferredTodos(prevDeferred);
+    }
+  }
+
+  async function bringTodoToToday(id) {
+    const prevDeferred = deferredTodos;
+    setDeferredTodos((d) => d.filter((x) => x.id !== id));
+    setBringingBackId(id);
+    try {
+      await fetchJson("/api/todos", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, defer_until: null }),
+      });
+      setActionError(null);
+      await refreshTodos(); // pulls it back into today's list with correct ordering
+    } catch (err) {
+      setActionError(err.message || "Couldn't bring that todo back to today.");
+      setDeferredTodos(prevDeferred);
+    } finally {
+      setBringingBackId(null);
     }
   }
 
@@ -380,16 +410,9 @@ export default function TodayPage() {
           today's view and reappears once that day arrives. */}
       {isToday && (
         <section className="bg-card dark:bg-dcard border border-line-soft dark:border-dline-soft rounded-lg2 shadow-card p-4 space-y-3">
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="text-[0.7rem] font-semibold uppercase tracking-[0.08em] text-ink-faint dark:text-dink-faint">
-              Today
-            </h2>
-            {deferredCount > 0 && (
-              <span className="text-[0.68rem] font-mono text-ink-faint dark:text-dink-faint">
-                {deferredCount} moved to later
-              </span>
-            )}
-          </div>
+          <h2 className="text-[0.7rem] font-semibold uppercase tracking-[0.08em] text-ink-faint dark:text-dink-faint">
+            Today
+          </h2>
           <form onSubmit={addTodo} className="flex gap-2">
             <input
               value={newTodo}
@@ -453,6 +476,34 @@ export default function TodayPage() {
             ))}
             {todos.length === 0 && <p className="text-ink-faint dark:text-dink-faint text-base py-1">Nothing yet.</p>}
           </ul>
+
+          {deferredTodos.length > 0 && (
+            <div className="pt-2 border-t border-line-soft dark:border-dline-soft space-y-2">
+              <h3 className="text-[0.65rem] font-semibold uppercase tracking-[0.08em] text-ink-faint dark:text-dink-faint">
+                Later
+              </h3>
+              <ul className="space-y-2">
+                {deferredTodos.map((t) => (
+                  <li key={t.id} className="flex items-center gap-2">
+                    <span className="flex-1 min-w-0 text-base text-ink-soft dark:text-dink-soft truncate">
+                      {t.text}
+                    </span>
+                    <span className="flex-none text-[0.65rem] font-mono text-ink-faint dark:text-dink-faint whitespace-nowrap">
+                      {formatHeading(t.defer_until, today)}
+                    </span>
+                    <button
+                      onClick={() => bringTodoToToday(t.id)}
+                      disabled={bringingBackId === t.id}
+                      title="Bring back to today"
+                      className="flex-none text-xs font-semibold bg-accent-soft dark:bg-daccent-soft text-accent dark:text-daccent rounded-full px-3 py-1.5 disabled:opacity-50 flex items-center gap-1.5"
+                    >
+                      {bringingBackId === t.id ? <Spinner className="w-3 h-3" /> : "bring to today"}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </section>
       )}
 
