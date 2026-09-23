@@ -85,6 +85,15 @@ CREATE INDEX IF NOT EXISTS idx_learning_log_date ON learning_log(log_date);
 -- /api/learning fetches every track's logs in one query filtered by
 -- learning_item_id IN (...) -- SQLite doesn't auto-index FK columns.
 CREATE INDEX IF NOT EXISTS idx_learning_log_item ON learning_log(learning_item_id);
+
+-- Failed PIN attempts, for basic login rate limiting (see api/login).
+-- Only failures are logged -- a successful login doesn't need throttling.
+CREATE TABLE IF NOT EXISTS login_attempts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  ip TEXT NOT NULL,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_login_attempts_ip_time ON login_attempts(ip, created_at);
 `;
 
 // CREATE TABLE IF NOT EXISTS only helps on a fresh database -- an existing
@@ -98,7 +107,11 @@ async function ensureColumn(table, column, ddl) {
 }
 
 async function main() {
-  for (const stmt of schema.split(";").map((s) => s.trim()).filter(Boolean)) {
+  // Strip `-- ...` line comments before splitting on ";" -- a semicolon
+  // inside a comment (e.g. "see api/login") used to get mistaken for a
+  // statement boundary here, silently corrupting the next CREATE statement.
+  const withoutComments = schema.replace(/--[^\n]*/g, "");
+  for (const stmt of withoutComments.split(";").map((s) => s.trim()).filter(Boolean)) {
     await db.execute(stmt);
   }
   console.log("Tables ready.");

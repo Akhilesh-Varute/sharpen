@@ -36,7 +36,12 @@ function LoginForm() {
         // keep busy=true — we're navigating away, no need to re-enable the form
         return;
       }
-      setError("Wrong PIN.");
+      if (res.status === 429) {
+        const body = await res.json().catch(() => null);
+        setError(body?.error || "Too many attempts. Try again later.");
+      } else {
+        setError("Wrong PIN.");
+      }
       setPin("");
     } catch {
       setError("Couldn't reach the server — check your connection.");
