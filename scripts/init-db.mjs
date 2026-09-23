@@ -120,6 +120,22 @@ async function main() {
   await ensureColumn("todos", "defer_until", "defer_until TEXT");
   await ensureColumn("todos", "completed_date", "completed_date TEXT");
 
+  // One-time backfill for todos completed before completed_date existed:
+  // best-effort using the date portion of the completed_at timestamp
+  // (stored in UTC). This can be off by a day right around midnight for
+  // anyone not on UTC, but it's the only record we have for these older
+  // rows -- new completions always get an explicit local completed_date
+  // from the client instead, which doesn't have that ambiguity. Safe to
+  // rerun: it only touches rows still missing completed_date.
+  const backfill = await db.execute(`
+    UPDATE todos
+    SET completed_date = date(completed_at)
+    WHERE done = 1 AND completed_date IS NULL AND completed_at IS NOT NULL
+  `);
+  if (backfill.rowsAffected > 0) {
+    console.log(`Backfilled completed_date for ${backfill.rowsAffected} previously-completed todo(s).`);
+  }
+
   const { rows } = await db.execute("SELECT COUNT(*) as c FROM habits");
   if (rows[0].c === 0) {
     const defaultHabits = ["Read / study 30 min", "No mindless scroll before bed", "Exercise"];
