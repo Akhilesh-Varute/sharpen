@@ -4,3 +4,6 @@ node_modules
 backups/
 local.db
 dev.log
+
+.vercel
+.env*

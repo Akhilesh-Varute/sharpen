@@ -5,6 +5,10 @@ export const metadata = {
   title: "Sharpen",
   description: "Journal, habits, and learning — for you, not for work.",
   manifest: "/manifest.json",
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 export const viewport = {
