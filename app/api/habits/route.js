@@ -32,7 +32,14 @@ export async function GET(req) {
     "SELECT * FROM habits WHERE archived = 0 ORDER BY sort_order ASC, id ASC"
   );
 
-  if (habits.length === 0) return NextResponse.json({ habits: [] });
+  // Archiving used to be a one-way trip -- nothing in the UI could ever
+  // query archived=1 rows back out. Send them along too (cheap: just the
+  // habit rows, no per-habit log/streak work) so the page can offer restore.
+  const { rows: archivedHabits } = await db.execute(
+    "SELECT * FROM habits WHERE archived = 1 ORDER BY sort_order ASC, id ASC"
+  );
+
+  if (habits.length === 0) return NextResponse.json({ habits: [], archived: archivedHabits });
 
   // One query for every habit's log dates instead of one query per habit
   // (this used to be N+1 round-trips to Turso, hit on every page load AND
@@ -61,7 +68,7 @@ export async function GET(req) {
     };
   });
 
-  return NextResponse.json({ habits: results });
+  return NextResponse.json({ habits: results, archived: archivedHabits });
 }
 
 function addDays(dateStr, n) {
@@ -86,5 +93,13 @@ export async function DELETE(req) {
   const id = req.nextUrl.searchParams.get("id");
   const db = getDb();
   await db.execute({ sql: "UPDATE habits SET archived = 1 WHERE id = ?", args: [id] });
+  return NextResponse.json({ ok: true });
+}
+
+// The other half of archive: bring a habit back into the active list.
+export async function PATCH(req) {
+  const { id } = await req.json();
+  const db = getDb();
+  await db.execute({ sql: "UPDATE habits SET archived = 0 WHERE id = ?", args: [id] });
   return NextResponse.json({ ok: true });
 }

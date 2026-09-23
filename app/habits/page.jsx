@@ -28,9 +28,11 @@ export default function HabitsPage() {
   const today = todayStr();
   const days = last30Days();
   const [habits, setHabits] = useState([]);
+  const [archivedHabits, setArchivedHabits] = useState([]);
   const [newHabit, setNewHabit] = useState("");
   const [addingHabit, setAddingHabit] = useState(false);
   const [archivingId, setArchivingId] = useState(null);
+  const [restoringId, setRestoringId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
   const [actionError, setActionError] = useState(null);
@@ -40,6 +42,7 @@ export default function HabitsPage() {
     try {
       const res = await fetchJson(`/api/habits?today=${today}`);
       setHabits(res.habits || []);
+      setArchivedHabits(res.archived || []);
     } catch (err) {
       setLoadError(err.message || "Couldn't load habits.");
     } finally {
@@ -112,6 +115,23 @@ export default function HabitsPage() {
     }
   }
 
+  async function restore(id) {
+    setRestoringId(id);
+    try {
+      await fetchJson("/api/habits", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      setActionError(null);
+      await load();
+    } catch (err) {
+      setActionError(err.message || "Couldn't restore that habit.");
+    } finally {
+      setRestoringId(null);
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center gap-3 py-24 text-ink-faint dark:text-dink-faint">
@@ -126,6 +146,7 @@ export default function HabitsPage() {
       <header className="pt-1">
         <div className="text-xs font-mono uppercase tracking-[0.08em] text-accent dark:text-daccent font-semibold">
           {habits.length} {habits.length === 1 ? "habit" : "habits"}
+          {archivedHabits.length > 0 ? ` · ${archivedHabits.length} archived` : ""}
         </div>
         <h1 className="text-2xl font-display font-medium mt-1">Habits</h1>
       </header>
@@ -210,6 +231,32 @@ export default function HabitsPage() {
           <p className="text-ink-faint dark:text-dink-faint text-base">No habits yet — add one above.</p>
         )}
       </div>
+
+      {archivedHabits.length > 0 && (
+        <div className="space-y-2">
+          <h2 className="text-[0.7rem] font-semibold uppercase tracking-[0.08em] text-ink-faint dark:text-dink-faint">
+            Archived
+          </h2>
+          <div className="space-y-2">
+            {archivedHabits.map((h) => (
+              <div
+                key={h.id}
+                className="flex items-center justify-between gap-2 bg-card dark:bg-dcard border border-line-soft dark:border-dline-soft rounded-lg2 p-3"
+              >
+                <span className="text-base text-ink-faint dark:text-dink-faint truncate">{h.name}</span>
+                <button
+                  onClick={() => restore(h.id)}
+                  disabled={restoringId === h.id}
+                  className="flex-none text-xs font-semibold bg-accent-soft dark:bg-daccent-soft text-accent dark:text-daccent rounded-full px-3 py-1.5 disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  {restoringId === h.id && <Spinner className="w-3 h-3" />}
+                  restore
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
