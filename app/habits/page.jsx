@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Spinner from "../../components/Spinner";
 
 function todayStr() {
   const d = new Date();
@@ -26,6 +27,8 @@ export default function HabitsPage() {
   const days = last30Days();
   const [habits, setHabits] = useState([]);
   const [newHabit, setNewHabit] = useState("");
+  const [addingHabit, setAddingHabit] = useState(false);
+  const [archivingId, setArchivingId] = useState(null);
   const [loading, setLoading] = useState(true);
 
   async function load() {
@@ -61,22 +64,39 @@ export default function HabitsPage() {
 
   async function addHabit(e) {
     e.preventDefault();
-    if (!newHabit.trim()) return;
-    await fetch("/api/habits", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: newHabit }),
-    });
-    setNewHabit("");
-    load();
+    if (!newHabit.trim() || addingHabit) return;
+    setAddingHabit(true);
+    try {
+      await fetch("/api/habits", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newHabit }),
+      });
+      setNewHabit("");
+      await load();
+    } finally {
+      setAddingHabit(false);
+    }
   }
 
   async function archive(id) {
-    await fetch(`/api/habits?id=${id}`, { method: "DELETE" });
-    load();
+    setArchivingId(id);
+    try {
+      await fetch(`/api/habits?id=${id}`, { method: "DELETE" });
+      await load();
+    } finally {
+      setArchivingId(null);
+    }
   }
 
-  if (loading) return <p className="text-ink-faint dark:text-dink-faint">Loading…</p>;
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-3 py-24 text-ink-faint dark:text-dink-faint">
+        <Spinner className="w-6 h-6 text-accent dark:text-daccent" />
+        <span className="text-sm">Loading habits…</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -92,10 +112,14 @@ export default function HabitsPage() {
           value={newHabit}
           onChange={(e) => setNewHabit(e.target.value)}
           placeholder="New habit…"
-          className="flex-1 border border-line dark:border-dline bg-paper dark:bg-dpaper rounded-sm2 px-3 py-2 text-sm focus:outline-none focus:ring-[3px] focus:ring-accent/20 dark:focus:ring-daccent/20"
+          disabled={addingHabit}
+          className="flex-1 border border-line dark:border-dline bg-paper dark:bg-dpaper rounded-sm2 px-3 py-2 text-sm focus:outline-none focus:ring-[3px] focus:ring-accent/20 dark:focus:ring-daccent/20 disabled:opacity-60"
         />
-        <button className="bg-ink dark:bg-dink text-paper dark:text-dpaper rounded-sm2 px-4 font-semibold text-sm">
-          Add
+        <button
+          disabled={addingHabit || !newHabit.trim()}
+          className="bg-ink dark:bg-dink text-paper dark:text-dpaper rounded-sm2 px-4 font-semibold text-sm disabled:opacity-50 flex items-center gap-1.5 min-w-[64px] justify-center"
+        >
+          {addingHabit ? <Spinner className="w-3.5 h-3.5" /> : "Add"}
         </button>
       </form>
 
@@ -129,8 +153,10 @@ export default function HabitsPage() {
                 </span>
                 <button
                   onClick={() => archive(h.id)}
-                  className="text-xs text-ink-faint dark:text-dink-faint hover:text-warn dark:hover:text-warn font-semibold"
+                  disabled={archivingId === h.id}
+                  className="text-xs text-ink-faint dark:text-dink-faint hover:text-warn dark:hover:text-warn font-semibold disabled:opacity-50 flex items-center gap-1"
                 >
+                  {archivingId === h.id && <Spinner className="w-3 h-3" />}
                   archive
                 </button>
               </div>

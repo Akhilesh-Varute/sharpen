@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Spinner from "../components/Spinner";
 
 function todayStr() {
   const d = new Date();
@@ -18,9 +19,11 @@ export default function TodayPage() {
   const [saved, setSaved] = useState(true);
   const [todos, setTodos] = useState([]);
   const [newTodo, setNewTodo] = useState("");
+  const [addingTodo, setAddingTodo] = useState(false);
   const [items, setItems] = useState([]);
   const [learnNote, setLearnNote] = useState("");
   const [learnItemId, setLearnItemId] = useState("");
+  const [addingLearn, setAddingLearn] = useState(false);
   const [todayLogs, setTodayLogs] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -61,15 +64,20 @@ export default function TodayPage() {
 
   async function addTodo(e) {
     e.preventDefault();
-    if (!newTodo.trim()) return;
-    await fetch("/api/todos", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: newTodo }),
-    });
-    setNewTodo("");
-    const res = await fetch("/api/todos").then((r) => r.json());
-    setTodos(res.todos || []);
+    if (!newTodo.trim() || addingTodo) return;
+    setAddingTodo(true);
+    try {
+      await fetch("/api/todos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: newTodo }),
+      });
+      setNewTodo("");
+      const res = await fetch("/api/todos").then((r) => r.json());
+      setTodos(res.todos || []);
+    } finally {
+      setAddingTodo(false);
+    }
   }
 
   async function toggleTodo(id, done) {
@@ -88,22 +96,34 @@ export default function TodayPage() {
 
   async function addLearning(e) {
     e.preventDefault();
-    if (!learnNote.trim()) return;
-    await fetch("/api/learning/log", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        learning_item_id: learnItemId || null,
-        date,
-        note: learnNote,
-      }),
-    });
-    setLearnNote("");
-    const res = await fetch("/api/learning/log?limit=100").then((r) => r.json());
-    setTodayLogs((res.logs || []).filter((l) => l.log_date === date));
+    if (!learnNote.trim() || addingLearn) return;
+    setAddingLearn(true);
+    try {
+      await fetch("/api/learning/log", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          learning_item_id: learnItemId || null,
+          date,
+          note: learnNote,
+        }),
+      });
+      setLearnNote("");
+      const res = await fetch("/api/learning/log?limit=100").then((r) => r.json());
+      setTodayLogs((res.logs || []).filter((l) => l.log_date === date));
+    } finally {
+      setAddingLearn(false);
+    }
   }
 
-  if (loading) return <p className="text-ink-faint dark:text-dink-faint">Loading…</p>;
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-3 py-24 text-ink-faint dark:text-dink-faint">
+        <Spinner className="w-6 h-6 text-accent dark:text-daccent" />
+        <span className="text-sm">Loading today…</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -169,10 +189,14 @@ export default function TodayPage() {
             value={newTodo}
             onChange={(e) => setNewTodo(e.target.value)}
             placeholder="Add a todo…"
-            className="flex-1 border border-line dark:border-dline bg-paper dark:bg-dpaper rounded-sm2 px-3 py-2 text-sm focus:outline-none focus:ring-[3px] focus:ring-accent/20 dark:focus:ring-daccent/20"
+            disabled={addingTodo}
+            className="flex-1 border border-line dark:border-dline bg-paper dark:bg-dpaper rounded-sm2 px-3 py-2 text-sm focus:outline-none focus:ring-[3px] focus:ring-accent/20 dark:focus:ring-daccent/20 disabled:opacity-60"
           />
-          <button className="bg-ink dark:bg-dink text-paper dark:text-dpaper rounded-sm2 px-4 font-semibold text-sm">
-            Add
+          <button
+            disabled={addingTodo || !newTodo.trim()}
+            className="bg-ink dark:bg-dink text-paper dark:text-dpaper rounded-sm2 px-4 font-semibold text-sm disabled:opacity-50 flex items-center gap-1.5 min-w-[64px] justify-center"
+          >
+            {addingTodo ? <Spinner className="w-3.5 h-3.5" /> : "Add"}
           </button>
         </form>
         <ul>
@@ -219,7 +243,8 @@ export default function TodayPage() {
           <select
             value={learnItemId}
             onChange={(e) => setLearnItemId(e.target.value)}
-            className="border border-line dark:border-dline bg-paper dark:bg-dpaper rounded-sm2 px-2 py-2 text-sm max-w-[110px]"
+            disabled={addingLearn}
+            className="border border-line dark:border-dline bg-paper dark:bg-dpaper rounded-sm2 px-2 py-2 text-sm max-w-[110px] disabled:opacity-60"
           >
             <option value="">General</option>
             {items.map((i) => (
@@ -232,10 +257,14 @@ export default function TodayPage() {
             value={learnNote}
             onChange={(e) => setLearnNote(e.target.value)}
             placeholder="One thing you learned…"
-            className="flex-1 border border-line dark:border-dline bg-paper dark:bg-dpaper rounded-sm2 px-3 py-2 text-sm focus:outline-none focus:ring-[3px] focus:ring-accent/20 dark:focus:ring-daccent/20"
+            disabled={addingLearn}
+            className="flex-1 border border-line dark:border-dline bg-paper dark:bg-dpaper rounded-sm2 px-3 py-2 text-sm focus:outline-none focus:ring-[3px] focus:ring-accent/20 dark:focus:ring-daccent/20 disabled:opacity-60"
           />
-          <button className="bg-ink dark:bg-dink text-paper dark:text-dpaper rounded-sm2 px-4 font-semibold text-sm">
-            Log
+          <button
+            disabled={addingLearn || !learnNote.trim()}
+            className="bg-ink dark:bg-dink text-paper dark:text-dpaper rounded-sm2 px-4 font-semibold text-sm disabled:opacity-50 flex items-center gap-1.5 min-w-[56px] justify-center"
+          >
+            {addingLearn ? <Spinner className="w-3.5 h-3.5" /> : "Log"}
           </button>
         </form>
         {todayLogs.length > 0 && (
@@ -261,7 +290,11 @@ export default function TodayPage() {
             Journal
           </h2>
           <span className="text-[0.65rem] font-mono text-ink-faint dark:text-dink-faint flex items-center gap-1.5">
-            <span className={`w-1.5 h-1.5 rounded-full ${saved ? "bg-good dark:bg-dgood" : "bg-accent dark:bg-daccent"}`} />
+            {saved ? (
+              <span className="w-1.5 h-1.5 rounded-full bg-good dark:bg-dgood" />
+            ) : (
+              <span className="w-1.5 h-1.5 rounded-full bg-accent dark:bg-daccent animate-pulse" />
+            )}
             {saved ? "Saved" : "Saving…"}
           </span>
         </div>

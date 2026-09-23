@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import Spinner from "./Spinner";
 
 const links = [
   {
@@ -37,10 +39,13 @@ const links = [
 export default function NavBar() {
   const pathname = usePathname();
   const router = useRouter();
+  const [loggingOut, setLoggingOut] = useState(false);
 
   if (pathname === "/login") return null;
 
   async function logout() {
+    if (loggingOut) return;
+    setLoggingOut(true);
     await fetch("/api/login", { method: "DELETE" });
     router.push("/login");
     router.refresh();
@@ -69,12 +74,17 @@ export default function NavBar() {
         })}
         <button
           onClick={logout}
-          className="flex-1 flex flex-col items-center justify-center gap-1 text-[0.65rem] font-semibold text-ink-faint dark:text-dink-faint"
+          disabled={loggingOut}
+          className="flex-1 flex flex-col items-center justify-center gap-1 text-[0.65rem] font-semibold text-ink-faint dark:text-dink-faint disabled:opacity-60"
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
-            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-            <path d="M16 17l5-5-5-5M21 12H9" />
-          </svg>
+          {loggingOut ? (
+            <Spinner className="w-5 h-5" />
+          ) : (
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <path d="M16 17l5-5-5-5M21 12H9" />
+            </svg>
+          )}
           Log out
         </button>
       </div>
